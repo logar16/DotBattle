@@ -7,22 +7,43 @@
   <style>
     :root { color-scheme: light dark; }
     body { margin: 0; font-family: system-ui, sans-serif; display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr; height: 100vh; overflow: hidden; }
-    #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; overflow: auto; }
+    body.fullscreen { grid-template-columns: 1fr; }
+    body.fullscreen #controls,
+    body.fullscreen #stats { display: none; }
+    body.fullscreen #main { grid-template-rows: 1fr; }
+    #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; overflow-y: auto; overflow-x: hidden; }
     details { border: 1px solid #3334; border-radius: 6px; padding: 8px; }
     summary { cursor: pointer; font-weight: 600; }
     details > .section-body { display: grid; gap: 12px; margin-top: 10px; }
-    #main { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+    #main { display: grid; grid-template-rows: auto 1fr; min-height: 0; position: relative; }
     #stats { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; background: #0f141b; border-bottom: 1px solid #3334; }
     #stats div { min-width: 132px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
     #stats button { background: none; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; min-width: 132px; justify-content: flex-start; }
+    .faction-swatch { font-size: 22px; }
     #stats .count { min-width: 5ch; text-align: left; }
     #stats button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; border-radius: 4px; }
+    .info-tooltip { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+    #stats .info-tooltip button { min-width: 0; width: 36px; height: 36px; padding: 0; border: 1px solid #3334; border-radius: 999px; background: #111827; line-height: 1; cursor: help; font-size: 24px; display: inline-flex; align-items: center; justify-content: center; }
+    .info-tooltip button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+    .info-tooltip span { position: absolute; right: 0; top: 28px; width: 300px; padding: 10px 12px; border-radius: 6px; background: #0f141b; border: 1px solid #3334; font-size: 13px; color: inherit; box-shadow: 0 4px 12px #0008; opacity: 0; pointer-events: none; transition: opacity 0.12s ease; }
+    .info-tooltip button:hover + span,
+    .info-tooltip button:focus-visible + span { opacity: 1; }
     #canvas { display: block; width: 100%; height: 100%; background: #0b0f14; }
+    #dotMenu { position: absolute; display: none; background: #0f141b; border: 1px solid #3334; border-radius: 6px; padding: 10px; z-index: 5; min-width: 160px; }
+    #dotMenu label { font-size: 12px; }
+    #dotMenu .row { margin-right: 0; }
+    #dotColorWrap { position: relative; }
+    #dotColorButton { width: 56px; height: 28px; border: 1px solid #3334; border-radius: 4px; background: #111827; cursor: pointer; }
+    #dotColorButton:focus-visible { outline: 1px solid #93c5fd; outline-offset: 2px; }
+    #dotColorList { position: absolute; top: 32px; left: 0; display: none; grid-template-columns: repeat(4, 16px); gap: 6px; padding: 6px; border: 1px solid #3334; border-radius: 6px; background: #0f141b; z-index: 6; }
+    .dot-color-swatch { width: 16px; height: 16px; border: 0; padding: 0; border-radius: 3px; cursor: pointer; }
+    .dot-color-swatch:hover { filter: none; }
+    .dot-color-swatch:focus-visible { outline: 1px solid #93c5fd; outline-offset: 2px; }
     label { display: grid; gap: 6px; font-size: 14px; }
     input[type="range"] { width: 100%; }
     button { padding: 8px 12px; }
-    .row { display: flex; gap: 8px; align-items: center; }
-    .value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+    .row { display: flex; gap: 8px; align-items: center; margin-right: 16px; }
+    .value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; margin-right: 16px; }
   </style>
 </head>
 <body>
@@ -43,9 +64,11 @@
           <label>Mouse attraction
             <div class="row"><input id="mouseAttraction" type="range" min="-200" max="200" step="5" value="0"><span id="mouseAttractionVal" class="value"></span></div>
           </label>
+          <label class="row"><input id="repelAll" type="checkbox">Repel all colors</label>
           <div class="row">
             <button id="restart">Restart</button>
             <button id="pause">Pause</button>
+            <button id="fullscreen">Fullscreen</button>
           </div>
         </div>
       </details>
@@ -70,7 +93,8 @@
             </div>
           </label>
           <label>Factions
-            <div class="row"><input id="factions" type="range" min="2" max="9" step="1" value="9"><span id="factionsVal" class="value"></span></div>
+            <div class="row"><input id="factions" type="range" min="2" max="8" step="1" value="8"><span id="factionsVal"
+                class="value"></span></div>
           </label>
         </div>
       </details>
@@ -78,10 +102,27 @@
   <section id="main">
     <div id="stats"></div>
     <canvas id="canvas"></canvas>
+    <div id="dotMenu" role="dialog" aria-hidden="true">
+      <label>Size
+        <div class="row"><input id="dotSize" type="range" min="1" max="20" step="1" value="8"><span id="dotSizeVal"
+            class="value"></span></div>
+      </label>
+      <label>Color
+        <div class="row" id="dotColorWrap">
+          <button id="dotColorButton" type="button"></button>
+          <div id="dotColorList" role="listbox" aria-label="Dot color"></div>
+        </div>
+      </label>
+    </div>
   </section>
   <script type="module">
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+            const dotMenu = document.getElementById('dotMenu');
+            const dotSizeInput = document.getElementById('dotSize');
+            const dotSizeVal = document.getElementById('dotSizeVal');
+            const dotColorButton = document.getElementById('dotColorButton');
+            const dotColorList = document.getElementById('dotColorList');
     const controls = {
       count: document.getElementById('count'),
       speed: document.getElementById('speed'),
@@ -91,9 +132,11 @@
       movement: document.getElementById('movement'),
       magnetStrength: document.getElementById('magnetStrength'),
       mouseAttraction: document.getElementById('mouseAttraction'),
+      repelAll: document.getElementById('repelAll'),
       factions: document.getElementById('factions'),
       restart: document.getElementById('restart'),
       pause: document.getElementById('pause'),
+      fullscreen: document.getElementById('fullscreen'),
     };
     const valueEls = {
       count: document.getElementById('countVal'),
@@ -111,6 +154,7 @@
         valueEls[key].textContent = controls[key].value;
       }
       const magnetic = controls.movement.value === 'magnetic';
+      const repelAll = controls.repelAll.checked;
       document.getElementById('magnetStrengthWrap').style.display = magnetic ? 'grid' : 'none';
     }
     updateValues();
@@ -137,15 +181,17 @@
 
     const palette = [
       '#dc143c',            // red (dark)
-      '#BB00BB',            // mediumvioletred
-      '#ffd700',            // yellow (gold)
+      '#ff7a00',            // orange
+      '#FFFF00',            // yellow
       '#7fff00',            // chartreuse
-      '#00fa9a',            // mediumspringgreen
       '#00ffff',            // aqua
       '#0000ff',            // blue
       '#7b1fa2',            // purple (dark)
       '#ffffff'             // white
     ];
+            dotColorList.innerHTML = palette.map((color, index) => (
+              `<button type="button" class="dot-color-swatch" data-color="${index}" style="background:${color}" aria-label="Color ${index + 1}"></button>`
+            )).join('');
 
     let dots = [];
     let paused = false;
@@ -155,6 +201,8 @@
     let lastFrameTime = 0;
     let fps = 0;
     let mouse = { x: 0, y: 0, active: false };
+            let fullscreen = false;
+            let menuDot = null;
 
     function rand(min, max) {
       return Math.random() * (max - min) + min;
@@ -198,6 +246,7 @@
       const speedScale = Number(controls.speed.value) / 100;
       const battleRadius = Number(controls.battleRadius.value);
       const magnetic = controls.movement.value === 'magnetic';
+      const repelAll = controls.repelAll.checked;
       const magnetStrength = Number(controls.magnetStrength.value) / 100;
       const mouseAttraction = Number(controls.mouseAttraction.value) / 100;
       const influenceRadius = Math.max(8, Number(controls.maxSize.value) * 5);
@@ -250,7 +299,7 @@
                 const dirY = dy / dist;
                 const falloff = 1 - dist / influenceRadius;
                 const force = magnetStrength * falloff;
-                const sign = other.faction === dot.faction ? -1 : 1;
+                const sign = repelAll ? -1 : (other.faction === dot.faction ? -1 : 1);
                 ax += dirX * force * sign;
                 ay += dirY * force * sign;
               }
@@ -265,7 +314,7 @@
             dot.vy = (dot.vy / speed) * maxSpeed;
           }
         }
-        if (mouse.active && mouseAttraction !== 0) {
+        if (!fullscreen && mouse.active && mouseAttraction !== 0) {
           const dx = mouse.x - dot.x;
           const dy = mouse.y - dot.y;
           const distSq = dx * dx + dy * dy;
@@ -333,9 +382,11 @@
       const width = viewWidth;
       const height = viewHeight;
       ctx.clearRect(0, 0, width, height);
-      ctx.strokeStyle = '#1f2937';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(wallPadding, wallPadding, width - wallPadding * 2, height - wallPadding * 2);
+      if (!fullscreen) {
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(wallPadding, wallPadding, width - wallPadding * 2, height - wallPadding * 2);
+      }
       for (const dot of dots) {
         ctx.fillStyle = palette[dot.faction % palette.length];
         ctx.beginPath();
@@ -350,11 +401,11 @@
       for (const dot of dots) counts[dot.faction]++;
       const total = dots.length;
       const statsEl = document.getElementById('stats');
-      if (statsEl.children.length !== factions + 2) {
+      if (statsEl.children.length !== factions + 3) {
         const factionButtons = counts.map((_, i) => (
-          `<button type="button" data-faction="${i}"><span style="color:${palette[i % palette.length]}">■</span><span class="count">0</span></button>`
+          `<button type="button" data-faction="${i}"><span class="faction-swatch" style="color:${palette[i % palette.length]}">■</span><span class="count">0</span></button>`
         )).join('');
-        statsEl.innerHTML = `${factionButtons}<div class="total"><strong>Total</strong> <span class="count">0</span></div><div class="fps"><strong>FPS</strong> <span class="count">0</span></div>`;
+        statsEl.innerHTML = `${factionButtons}<div class="total"><strong>Total</strong> <span class="count">0</span></div><div class="fps"><strong>FPS</strong> <span class="count">0</span></div><div class="info-tooltip"><button type="button" aria-label="Faction controls info">i</button><span>Click a faction swatch to add 50 dots. Shift + click converts all dots to that faction. Right-click removes 50. Shift + right-click removes all dots for that faction.</span></div>`;
       }
       for (let i = 0; i < factions; i++) {
         const percent = total ? Math.round((counts[i] / total) * 100) : 0;
@@ -390,20 +441,68 @@
     controls.pause.addEventListener('click', () => {
       paused = !paused;
       controls.pause.textContent = paused ? 'Resume' : 'Pause';
+      dotMenu.style.display = 'none';
+      dotColorList.style.display = 'none';
+      menuDot = null;
     });
+        controls.fullscreen.addEventListener('click', () => {
+          fullscreen = true;
+          mouse.active = false;
+          dotMenu.style.display = 'none';
+          dotColorList.style.display = 'none';
+          menuDot = null;
+          document.body.classList.add('fullscreen');
+          resizeCanvas();
+    });
+    function removeFactionDots(faction, count) {
+      let removed = 0;
+      for (let i = dots.length - 1; i >= 0; i--) {
+        if (dots[i].faction !== faction) continue;
+        dots.splice(i, 1);
+        removed++;
+        if (count && removed >= count) break;
+      }
+    }
+
     document.getElementById('stats').addEventListener('click', (event) => {
       const button = event.target.closest('button[data-faction]');
       if (!button) return;
       const faction = Number(button.dataset.faction);
       const minSize = Number(controls.minSize.value);
       const maxSize = Number(controls.maxSize.value);
+      if (event.shiftKey) {
+        for (const dot of dots) {
+          dot.faction = faction;
+        }
+        return;
+      }
       for (let j = 0; j < 50; j++) {
         const newX = rand(wallPadding, viewWidth - wallPadding);
         const newY = rand(wallPadding, viewHeight - wallPadding);
         dots.push(spawnDot(faction, newX, newY, minSize, maxSize));
       }
     });
+    document.getElementById('stats').addEventListener('contextmenu', (event) => {
+      const button = event.target.closest('button[data-faction]');
+      if (!button) return;
+      event.preventDefault();
+      const faction = Number(button.dataset.faction);
+      if (event.shiftKey) {
+        removeFactionDots(faction);
+      } else {
+        removeFactionDots(faction, 50);
+      }
+    });
     canvas.addEventListener('click', (event) => {
+      if (fullscreen) {
+        fullscreen = false;
+        document.body.classList.remove('fullscreen');
+        resizeCanvas();
+        return;
+      }
+      dotMenu.style.display = 'none';
+      dotColorList.style.display = 'none';
+      menuDot = null;
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
@@ -426,6 +525,7 @@
       }
     });
     canvas.addEventListener('mousemove', (event) => {
+      if (fullscreen) return;
       const rect = canvas.getBoundingClientRect();
       mouse.x = event.clientX - rect.left;
       mouse.y = event.clientY - rect.top;
@@ -434,6 +534,80 @@
     canvas.addEventListener('mouseleave', () => {
       mouse.active = false;
     });
+            document.addEventListener('keydown', () => {
+              if (fullscreen) {
+                fullscreen = false;
+                document.body.classList.remove('fullscreen');
+                resizeCanvas();
+              }
+              dotMenu.style.display = 'none';
+              dotColorList.style.display = 'none';
+              menuDot = null;
+            });
+            document.addEventListener('mousedown', () => {
+              if (fullscreen) {
+                fullscreen = false;
+                document.body.classList.remove('fullscreen');
+                resizeCanvas();
+              }
+              if (!dotMenu.contains(event.target)) {
+                dotMenu.style.display = 'none';
+                dotColorList.style.display = 'none';
+                menuDot = null;
+              }
+            });
+
+            dotSizeInput.addEventListener('input', () => {
+              if (!menuDot) return;
+              const size = Number(dotSizeInput.value);
+              menuDot.size = size;
+              dotSizeVal.textContent = size;
+            });
+            dotColorButton.addEventListener('click', () => {
+              dotColorList.style.display = dotColorList.style.display === 'grid' ? 'none' : 'grid';
+            });
+            dotColorList.addEventListener('click', (event) => {
+              const swatch = event.target.closest('.dot-color-swatch');
+              if (!swatch || !menuDot) return;
+              menuDot.faction = Number(swatch.dataset.color);
+              dotColorButton.style.background = palette[menuDot.faction % palette.length];
+              dotColorList.style.display = 'none';
+            });
+            canvas.addEventListener('contextmenu', (event) => {
+              if (!paused || fullscreen) return;
+              event.preventDefault();
+              const rect = canvas.getBoundingClientRect();
+              const x = event.clientX - rect.left;
+              const y = event.clientY - rect.top;
+              let target = null;
+              for (let i = dots.length - 1; i >= 0; i--) {
+                const dot = dots[i];
+                const dx = x - dot.x;
+                const dy = y - dot.y;
+                if (dx * dx + dy * dy <= dot.size * dot.size) {
+                  target = dot;
+                  break;
+                }
+              }
+              if (!target) {
+                dotMenu.style.display = 'none';
+                dotColorList.style.display = 'none';
+                menuDot = null;
+                return;
+              }
+              menuDot = target;
+              dotSizeInput.value = Math.round(target.size);
+              dotSizeVal.textContent = Math.round(target.size);
+              dotColorButton.style.background = palette[target.faction % palette.length];
+              dotColorList.style.display = 'none';
+              dotMenu.style.display = 'grid';
+              const menuWidth = dotMenu.offsetWidth || 180;
+              const menuHeight = dotMenu.offsetHeight || 120;
+              const left = Math.min(viewWidth - menuWidth, Math.max(0, x));
+              const top = Math.min(viewHeight - menuHeight, Math.max(0, y));
+              dotMenu.style.left = `${left}px`;
+              dotMenu.style.top = `${top}px`;
+            });
 
     init();
     requestAnimationFrame(loop);
