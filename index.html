@@ -6,12 +6,20 @@
   <title>Dot Battle</title>
   <style>
     :root { color-scheme: light dark; }
-    body { margin: 0; font-family: system-ui, sans-serif; display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr; height: 100vh; overflow: hidden; }
+    body { margin: 0; font-family: system-ui, sans-serif; display: grid; grid-template-columns: minmax(320px, 420px) 1fr; grid-template-rows: 1fr; height: 100vh; overflow: hidden; }
     body.fullscreen { grid-template-columns: 1fr; }
     body.fullscreen #controls,
     body.fullscreen #stats { display: none; }
     body.fullscreen #main { grid-template-rows: 1fr; }
+    body.controls-collapsed { grid-template-columns: 56px 1fr; }
     #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+    body.controls-collapsed #controls { padding: 8px; }
+    body.controls-collapsed #controls > :not(.control-bar) { display: none; }
+    .control-bar { display: flex; gap: 8px; align-items: center; }
+    body.controls-collapsed .control-bar { flex-direction: column; }
+    .control-bar button { width: 40px; height: 40px; padding: 0; border-radius: 10px; border: 1px solid #3334; background: #111827; color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; }
+    .control-bar button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+    .control-bar button:hover { background: #1f2937; }
     details { border: 1px solid #3334; border-radius: 6px; padding: 8px; }
     summary { cursor: pointer; font-weight: 600; }
     details > .section-body { display: grid; gap: 12px; margin-top: 10px; }
@@ -48,7 +56,12 @@
 </head>
 <body>
     <section id="controls">
-      <h2>Dot Battle</h2>
+      <div class="control-bar">
+        <button id="controlsToggle" type="button" aria-label="Settings" title="Settings" aria-expanded="true">⚙</button>
+        <button id="restart" type="button" aria-label="Restart" title="Restart">↻</button>
+        <button id="pause" type="button" aria-label="Pause" title="Pause">⏸</button>
+        <button id="fullscreen" type="button" aria-label="Fullscreen" title="Fullscreen">⛶</button>
+      </div>
       <details open>
         <summary>Variables</summary>
         <div class="section-body">
@@ -65,11 +78,6 @@
             <div class="row"><input id="mouseAttraction" type="range" min="-200" max="200" step="5" value="0"><span id="mouseAttractionVal" class="value"></span></div>
           </label>
           <label class="row"><input id="repelAll" type="checkbox">Repel all colors</label>
-          <div class="row">
-            <button id="restart">Restart</button>
-            <button id="pause">Pause</button>
-            <button id="fullscreen">Fullscreen</button>
-          </div>
         </div>
       </details>
       <details>
@@ -121,8 +129,9 @@
             const dotMenu = document.getElementById('dotMenu');
             const dotSizeInput = document.getElementById('dotSize');
             const dotSizeVal = document.getElementById('dotSizeVal');
-            const dotColorButton = document.getElementById('dotColorButton');
-            const dotColorList = document.getElementById('dotColorList');
+    const dotColorButton = document.getElementById('dotColorButton');
+    const dotColorList = document.getElementById('dotColorList');
+    const controlsToggle = document.getElementById('controlsToggle');
     const controls = {
       count: document.getElementById('count'),
       speed: document.getElementById('speed'),
@@ -208,7 +217,7 @@
       return Math.random() * (max - min) + min;
     }
 
-    const wallPadding = 50;
+    const arenaPadding = { top: 12, right: 12, bottom: 80, left: 12 };
     function spawnDot(faction, x, y, minSize, maxSize) {
       const size = rand(minSize, maxSize);
       const angle = rand(0, Math.PI * 2);
@@ -233,8 +242,8 @@
         return {
           ...spawnDot(
             Math.floor(rand(0, factions)),
-            rand(wallPadding, width - wallPadding),
-            rand(wallPadding, height - wallPadding),
+            rand(arenaPadding.left, width - arenaPadding.right),
+            rand(arenaPadding.top, height - arenaPadding.bottom),
             minSize,
             maxSize
           ),
@@ -255,10 +264,10 @@
       const mouseInfluenceRadiusSq = mouseInfluenceRadius * mouseInfluenceRadius;
       const width = viewWidth;
       const height = viewHeight;
-      const minX = wallPadding;
-      const minY = wallPadding;
-      const maxX = width - wallPadding;
-      const maxY = height - wallPadding;
+      const minX = arenaPadding.left;
+      const minY = arenaPadding.top;
+      const maxX = width - arenaPadding.right;
+      const maxY = height - arenaPadding.bottom;
       const cellSize = Math.max(8, magnetic ? influenceRadius : battleRadius * 2);
       const cols = Math.ceil(width / cellSize);
       const rows = Math.ceil(height / cellSize);
@@ -385,7 +394,12 @@
       if (!fullscreen) {
         ctx.strokeStyle = '#1f2937';
         ctx.lineWidth = 2;
-        ctx.strokeRect(wallPadding, wallPadding, width - wallPadding * 2, height - wallPadding * 2);
+        ctx.strokeRect(
+          arenaPadding.left,
+          arenaPadding.top,
+          width - arenaPadding.left - arenaPadding.right,
+          height - arenaPadding.top - arenaPadding.bottom
+        );
       }
       for (const dot of dots) {
         ctx.fillStyle = palette[dot.faction % palette.length];
@@ -440,10 +454,16 @@
     controls.restart.addEventListener('click', init);
     controls.pause.addEventListener('click', () => {
       paused = !paused;
-      controls.pause.textContent = paused ? 'Resume' : 'Pause';
+      controls.pause.textContent = paused ? '▶' : '⏸';
+      controls.pause.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+      controls.pause.setAttribute('title', paused ? 'Resume' : 'Pause');
       dotMenu.style.display = 'none';
       dotColorList.style.display = 'none';
       menuDot = null;
+    });
+    controlsToggle.addEventListener('click', () => {
+      const collapsed = document.body.classList.toggle('controls-collapsed');
+      controlsToggle.setAttribute('aria-expanded', String(!collapsed));
     });
         controls.fullscreen.addEventListener('click', () => {
           fullscreen = true;
@@ -477,8 +497,8 @@
         return;
       }
       for (let j = 0; j < 50; j++) {
-        const newX = rand(wallPadding, viewWidth - wallPadding);
-        const newY = rand(wallPadding, viewHeight - wallPadding);
+        const newX = rand(arenaPadding.left, viewWidth - arenaPadding.right);
+        const newY = rand(arenaPadding.top, viewHeight - arenaPadding.bottom);
         dots.push(spawnDot(faction, newX, newY, minSize, maxSize));
       }
     });
@@ -516,8 +536,8 @@
           for (let j = 0; j < 50; j++) {
             const offsetX = rand(-dot.size, dot.size);
             const offsetY = rand(-dot.size, dot.size);
-            const newX = Math.max(wallPadding, Math.min(viewWidth - wallPadding, dot.x + offsetX));
-            const newY = Math.max(wallPadding, Math.min(viewHeight - wallPadding, dot.y + offsetY));
+            const newX = Math.max(arenaPadding.left, Math.min(viewWidth - arenaPadding.right, dot.x + offsetX));
+            const newY = Math.max(arenaPadding.top, Math.min(viewHeight - arenaPadding.bottom, dot.y + offsetY));
             dots.push(spawnDot(dot.faction, newX, newY, minSize, maxSize));
           }
           break;
