@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dot Battle</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: system-ui, sans-serif; display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr; height: 100vh; overflow: hidden; }
+    #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; }
+    #main { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+    #stats { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; background: #0f141b; border-bottom: 1px solid #3334; }
+    #stats div { min-width: 132px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+    #stats button { background: none; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; min-width: 132px; justify-content: flex-start; }
+    #stats .count { min-width: 5ch; text-align: left; }
+    #stats button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; border-radius: 4px; }
+    #canvas { display: block; width: 100%; height: 100%; background: #0b0f14; }
+    label { display: grid; gap: 6px; font-size: 14px; }
+    input[type="range"] { width: 100%; }
+    button { padding: 8px 12px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <section id="controls">
+    <h2>Dot Battle</h2>
+    <label>Dots
+      <div class="row"><input id="count" type="range" min="50" max="800" step="10" value="500"><span id="countVal" class="value"></span></div>
+    </label>
+    <label>Speed
+      <div class="row"><input id="speed" type="range" min="10" max="400" step="5" value="60"><span id="speedVal" class="value"></span></div>
+    </label>
+    <label>Min size
+      <div class="row"><input id="minSize" type="range" min="2" max="10" step="1" value="2"><span id="minSizeVal" class="value"></span></div>
+    </label>
+    <label>Max size
+      <div class="row"><input id="maxSize" type="range" min="4" max="20" step="1" value="8"><span id="maxSizeVal" class="value"></span></div>
+    </label>
+    <label>Battle radius
+      <div class="row"><input id="battleRadius" type="range" min="0" max="40" step="1" value="5"><span id="battleRadiusVal" class="value"></span></div>
+    </label>
+    <label>Movement
+      <div class="row">
+        <select id="movement">
+          <option value="roam">Roam</option>
+          <option value="magnetic" selected>Magnetic</option>
+        </select>
+      </div>
+    </label>
+    <label>Magnet strength
+      <div class="row"><input id="magnetStrength" type="range" min="10" max="200" step="5" value="80"><span id="magnetStrengthVal" class="value"></span></div>
+    </label>
+    <label>Factions
+      <div class="row"><input id="factions" type="range" min="2" max="9" step="1" value="9"><span id="factionsVal" class="value"></span></div>
+    </label>
+    <div class="row">
+      <button id="restart">Restart</button>
+      <button id="pause">Pause</button>
+    </div>
+  </section>
+  <section id="main">
+    <div id="stats"></div>
+    <canvas id="canvas"></canvas>
+  </section>
+  <script type="module">
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const controls = {
+      count: document.getElementById('count'),
+      speed: document.getElementById('speed'),
+      minSize: document.getElementById('minSize'),
+      maxSize: document.getElementById('maxSize'),
+      battleRadius: document.getElementById('battleRadius'),
+      movement: document.getElementById('movement'),
+      magnetStrength: document.getElementById('magnetStrength'),
+      factions: document.getElementById('factions'),
+      restart: document.getElementById('restart'),
+      pause: document.getElementById('pause'),
+    };
+    const valueEls = {
+      count: document.getElementById('countVal'),
+      speed: document.getElementById('speedVal'),
+      minSize: document.getElementById('minSizeVal'),
+      maxSize: document.getElementById('maxSizeVal'),
+      battleRadius: document.getElementById('battleRadiusVal'),
+      magnetStrength: document.getElementById('magnetStrengthVal'),
+      factions: document.getElementById('factionsVal'),
+    };
+
+    function updateValues() {
+      for (const key of Object.keys(valueEls)) {
+        valueEls[key].textContent = controls[key].value;
+      }
+    }
+    updateValues();
+    Object.values(controls).forEach((el) => {
+      if (el?.addEventListener) {
+        el.addEventListener('input', updateValues);
+      }
+    });
+    controls.movement.addEventListener('change', updateValues);
+
+    let viewWidth = 0;
+    let viewHeight = 0;
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      viewWidth = rect.width;
+      viewHeight = rect.height;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const palette = [
+      '#dc143c',            // red (dark)
+      '#BB00BB',            // mediumvioletred
+      '#ffd700',            // yellow (gold)
+      '#7fff00',            // chartreuse
+      '#00fa9a',            // mediumspringgreen
+      '#00ffff',            // aqua
+      '#0000ff',            // blue
+      '#7b1fa2',            // purple (dark)
+      '#ffffff'             // white
+    ];
+
+    let dots = [];
+    let paused = false;
+    let lastTime = 0;
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const wallPadding = 20;
+    function spawnDot(faction, x, y, minSize, maxSize) {
+      const size = rand(minSize, maxSize);
+      const angle = rand(0, Math.PI * 2);
+      const speed = rand(0.4, 1.0);
+      return {
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size,
+        faction,
+      };
+    }
+    function init() {
+      const count = Number(controls.count.value);
+      const minSize = Number(controls.minSize.value);
+      const maxSize = Number(controls.maxSize.value);
+      const factions = Number(controls.factions.value);
+      const width = viewWidth;
+      const height = viewHeight;
+      dots = new Array(count).fill(0).map(() => {
+        return {
+          ...spawnDot(
+            Math.floor(rand(0, factions)),
+            rand(wallPadding, width - wallPadding),
+            rand(wallPadding, height - wallPadding),
+            minSize,
+            maxSize
+          ),
+        };
+      });
+    }
+
+    function update(dt) {
+      const speedScale = Number(controls.speed.value) / 100;
+      const battleRadius = Number(controls.battleRadius.value);
+      const magnetic = controls.movement.value === 'magnetic';
+      const magnetStrength = Number(controls.magnetStrength.value) / 100;
+      const influenceRadius = Math.max(8, Number(controls.maxSize.value) * 5);
+      const influenceRadiusSq = influenceRadius * influenceRadius;
+      const width = viewWidth;
+      const height = viewHeight;
+      const minX = wallPadding;
+      const minY = wallPadding;
+      const maxX = width - wallPadding;
+      const maxY = height - wallPadding;
+      const cellSize = Math.max(8, magnetic ? influenceRadius : battleRadius * 2);
+      const cols = Math.ceil(width / cellSize);
+      const rows = Math.ceil(height / cellSize);
+      const grid = new Array(cols * rows).fill(null).map(() => []);
+
+      for (const dot of dots) {
+        const cx = Math.min(cols - 1, Math.max(0, Math.floor(dot.x / cellSize)));
+        const cy = Math.min(rows - 1, Math.max(0, Math.floor(dot.y / cellSize)));
+        grid[cx + cy * cols].push(dot);
+      }
+
+      for (const dot of dots) {
+        if (magnetic) {
+          let ax = 0;
+          let ay = 0;
+          const cx = Math.min(cols - 1, Math.max(0, Math.floor(dot.x / cellSize)));
+          const cy = Math.min(rows - 1, Math.max(0, Math.floor(dot.y / cellSize)));
+          for (let oy = -1; oy <= 1; oy++) {
+            for (let ox = -1; ox <= 1; ox++) {
+              const nx = cx + ox;
+              const ny = cy + oy;
+              if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+              const neighborCell = grid[nx + ny * cols];
+              if (!neighborCell.length) continue;
+              for (const other of neighborCell) {
+                if (other === dot) continue;
+                const dx = other.x - dot.x;
+                const dy = other.y - dot.y;
+                const distSq = dx * dx + dy * dy;
+                if (distSq === 0 || distSq > influenceRadiusSq) continue;
+                const dist = Math.sqrt(distSq);
+                const dirX = dx / dist;
+                const dirY = dy / dist;
+                const falloff = 1 - dist / influenceRadius;
+                const force = magnetStrength * falloff;
+                const sign = other.faction === dot.faction ? -1 : 1;
+                ax += dirX * force * sign;
+                ay += dirY * force * sign;
+              }
+            }
+          }
+          dot.vx += ax * dt;
+          dot.vy += ay * dt;
+          const maxSpeed = 3;
+          const speed = Math.hypot(dot.vx, dot.vy);
+          if (speed > maxSpeed) {
+            dot.vx = (dot.vx / speed) * maxSpeed;
+            dot.vy = (dot.vy / speed) * maxSpeed;
+          }
+        }
+        dot.x += dot.vx * dt * speedScale;
+        dot.y += dot.vy * dt * speedScale;
+        const left = minX + dot.size;
+        const right = maxX - dot.size;
+        const top = minY + dot.size;
+        const bottom = maxY - dot.size;
+        if (dot.x < left || dot.x > right) dot.vx *= -1;
+        if (dot.y < top || dot.y > bottom) dot.vy *= -1;
+        dot.x = Math.max(left, Math.min(right, dot.x));
+        dot.y = Math.max(top, Math.min(bottom, dot.y));
+      }
+
+      const battleGrid = new Array(cols * rows).fill(null).map(() => []);
+      for (const dot of dots) {
+        const cx = Math.min(cols - 1, Math.max(0, Math.floor(dot.x / cellSize)));
+        const cy = Math.min(rows - 1, Math.max(0, Math.floor(dot.y / cellSize)));
+        battleGrid[cx + cy * cols].push(dot);
+      }
+
+      if (battleRadius > 0) {
+        for (let cy = 0; cy < rows; cy++) {
+          for (let cx = 0; cx < cols; cx++) {
+            const cell = battleGrid[cx + cy * cols];
+            if (!cell.length) continue;
+            for (const dot of cell) {
+              for (let oy = -1; oy <= 1; oy++) {
+                for (let ox = -1; ox <= 1; ox++) {
+                  const nx = cx + ox;
+                  const ny = cy + oy;
+                  if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+                  const neighborCell = battleGrid[nx + ny * cols];
+                  if (!neighborCell.length) continue;
+                  for (const other of neighborCell) {
+                    if (other === dot) continue;
+                    if (other.faction === dot.faction) continue;
+                    const dx = other.x - dot.x;
+                    const dy = other.y - dot.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq <= battleRadius * battleRadius) {
+                      const total = dot.size + other.size;
+                      const roll = Math.random() * total;
+                      if (roll < dot.size) {
+                        other.faction = dot.faction;
+                      } else {
+                        dot.faction = other.faction;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    function render() {
+      const width = viewWidth;
+      const height = viewHeight;
+      ctx.clearRect(0, 0, width, height);
+      ctx.strokeStyle = '#1f2937';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(wallPadding, wallPadding, width - wallPadding * 2, height - wallPadding * 2);
+      for (const dot of dots) {
+        ctx.fillStyle = palette[dot.faction % palette.length];
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function updateStats() {
+      const factions = Number(controls.factions.value);
+      const counts = new Array(factions).fill(0);
+      for (const dot of dots) counts[dot.faction]++;
+      const statsEl = document.getElementById('stats');
+      if (statsEl.children.length !== factions) {
+        statsEl.innerHTML = counts.map((_, i) => (
+          `<button type="button" data-faction="${i}"><span style="color:${palette[i % palette.length]}">■</span><span class="count">0</span></button>`
+        )).join('');
+      }
+      for (let i = 0; i < factions; i++) {
+        statsEl.children[i].querySelector('.count').textContent = counts[i];
+      }
+    }
+
+    function loop(timestamp) {
+      const dt = Math.min(32, timestamp - lastTime) / 16.67;
+      lastTime = timestamp;
+      if (!paused) update(dt);
+      render();
+      updateStats();
+      requestAnimationFrame(loop);
+    }
+
+    controls.restart.addEventListener('click', init);
+    controls.pause.addEventListener('click', () => {
+      paused = !paused;
+      controls.pause.textContent = paused ? 'Resume' : 'Pause';
+    });
+    document.getElementById('stats').addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-faction]');
+      if (!button) return;
+      const faction = Number(button.dataset.faction);
+      const minSize = Number(controls.minSize.value);
+      const maxSize = Number(controls.maxSize.value);
+      for (let j = 0; j < 50; j++) {
+        const newX = rand(wallPadding, viewWidth - wallPadding);
+        const newY = rand(wallPadding, viewHeight - wallPadding);
+        dots.push(spawnDot(faction, newX, newY, minSize, maxSize));
+      }
+    });
+    canvas.addEventListener('click', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      for (let i = dots.length - 1; i >= 0; i--) {
+        const dot = dots[i];
+        const dx = x - dot.x;
+        const dy = y - dot.y;
+        if (dx * dx + dy * dy <= dot.size * dot.size) {
+          const minSize = Number(controls.minSize.value);
+          const maxSize = Number(controls.maxSize.value);
+          for (let j = 0; j < 50; j++) {
+            const offsetX = rand(-dot.size, dot.size);
+            const offsetY = rand(-dot.size, dot.size);
+            const newX = Math.max(wallPadding, Math.min(viewWidth - wallPadding, dot.x + offsetX));
+            const newY = Math.max(wallPadding, Math.min(viewHeight - wallPadding, dot.y + offsetY));
+            dots.push(spawnDot(dot.faction, newX, newY, minSize, maxSize));
+          }
+          break;
+        }
+      }
+    });
+
+    init();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
