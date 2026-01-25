@@ -7,7 +7,10 @@
   <style>
     :root { color-scheme: light dark; }
     body { margin: 0; font-family: system-ui, sans-serif; display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr; height: 100vh; overflow: hidden; }
-    #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; }
+    #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; overflow: auto; }
+    details { border: 1px solid #3334; border-radius: 6px; padding: 8px; }
+    summary { cursor: pointer; font-weight: 600; }
+    details > .section-body { display: grid; gap: 12px; margin-top: 10px; }
     #main { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
     #stats { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; background: #0f141b; border-bottom: 1px solid #3334; }
     #stats div { min-width: 132px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
@@ -23,42 +26,55 @@
   </style>
 </head>
 <body>
-  <section id="controls">
-    <h2>Dot Battle</h2>
-    <label>Dots
-      <div class="row"><input id="count" type="range" min="50" max="800" step="10" value="500"><span id="countVal" class="value"></span></div>
-    </label>
-    <label>Speed
-      <div class="row"><input id="speed" type="range" min="10" max="400" step="5" value="60"><span id="speedVal" class="value"></span></div>
-    </label>
-    <label>Min size
-      <div class="row"><input id="minSize" type="range" min="2" max="10" step="1" value="2"><span id="minSizeVal" class="value"></span></div>
-    </label>
-    <label>Max size
-      <div class="row"><input id="maxSize" type="range" min="4" max="20" step="1" value="8"><span id="maxSizeVal" class="value"></span></div>
-    </label>
-    <label>Battle radius
-      <div class="row"><input id="battleRadius" type="range" min="0" max="40" step="1" value="5"><span id="battleRadiusVal" class="value"></span></div>
-    </label>
-    <label>Movement
-      <div class="row">
-        <select id="movement">
-          <option value="roam">Roam</option>
-          <option value="magnetic" selected>Magnetic</option>
-        </select>
-      </div>
-    </label>
-    <label>Magnet strength
-      <div class="row"><input id="magnetStrength" type="range" min="10" max="200" step="5" value="80"><span id="magnetStrengthVal" class="value"></span></div>
-    </label>
-    <label>Factions
-      <div class="row"><input id="factions" type="range" min="2" max="9" step="1" value="9"><span id="factionsVal" class="value"></span></div>
-    </label>
-    <div class="row">
-      <button id="restart">Restart</button>
-      <button id="pause">Pause</button>
-    </div>
-  </section>
+    <section id="controls">
+      <h2>Dot Battle</h2>
+      <details open>
+        <summary>Variables</summary>
+        <div class="section-body">
+          <label>Speed
+            <div class="row"><input id="speed" type="range" min="10" max="400" step="5" value="60"><span id="speedVal" class="value"></span></div>
+          </label>
+          <label>Battle radius
+            <div class="row"><input id="battleRadius" type="range" min="0" max="20" step="1" value="5"><span id="battleRadiusVal" class="value"></span></div>
+          </label>
+          <label id="magnetStrengthWrap">Magnet strength
+            <div class="row"><input id="magnetStrength" type="range" min="10" max="200" step="5" value="80"><span id="magnetStrengthVal" class="value"></span></div>
+          </label>
+          <label>Mouse attraction
+            <div class="row"><input id="mouseAttraction" type="range" min="-200" max="200" step="5" value="0"><span id="mouseAttractionVal" class="value"></span></div>
+          </label>
+          <div class="row">
+            <button id="restart">Restart</button>
+            <button id="pause">Pause</button>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>Setup</summary>
+        <div class="section-body">
+          <label>Dots
+            <div class="row"><input id="count" type="range" min="50" max="800" step="10" value="500"><span id="countVal" class="value"></span></div>
+          </label>
+          <label>Min size
+            <div class="row"><input id="minSize" type="range" min="2" max="10" step="1" value="2"><span id="minSizeVal" class="value"></span></div>
+          </label>
+          <label>Max size
+            <div class="row"><input id="maxSize" type="range" min="4" max="20" step="1" value="8"><span id="maxSizeVal" class="value"></span></div>
+          </label>
+          <label>Movement
+            <div class="row">
+              <select id="movement">
+                <option value="roam">Roam</option>
+                <option value="magnetic" selected>Magnetic</option>
+              </select>
+            </div>
+          </label>
+          <label>Factions
+            <div class="row"><input id="factions" type="range" min="2" max="9" step="1" value="9"><span id="factionsVal" class="value"></span></div>
+          </label>
+        </div>
+      </details>
+    </section>
   <section id="main">
     <div id="stats"></div>
     <canvas id="canvas"></canvas>
@@ -74,6 +90,7 @@
       battleRadius: document.getElementById('battleRadius'),
       movement: document.getElementById('movement'),
       magnetStrength: document.getElementById('magnetStrength'),
+      mouseAttraction: document.getElementById('mouseAttraction'),
       factions: document.getElementById('factions'),
       restart: document.getElementById('restart'),
       pause: document.getElementById('pause'),
@@ -85,6 +102,7 @@
       maxSize: document.getElementById('maxSizeVal'),
       battleRadius: document.getElementById('battleRadiusVal'),
       magnetStrength: document.getElementById('magnetStrengthVal'),
+      mouseAttraction: document.getElementById('mouseAttractionVal'),
       factions: document.getElementById('factionsVal'),
     };
 
@@ -92,6 +110,8 @@
       for (const key of Object.keys(valueEls)) {
         valueEls[key].textContent = controls[key].value;
       }
+      const magnetic = controls.movement.value === 'magnetic';
+      document.getElementById('magnetStrengthWrap').style.display = magnetic ? 'grid' : 'none';
     }
     updateValues();
     Object.values(controls).forEach((el) => {
@@ -130,12 +150,17 @@
     let dots = [];
     let paused = false;
     let lastTime = 0;
+    let gridCells = [];
+    let nextStatsUpdate = 0;
+    let lastFrameTime = 0;
+    let fps = 0;
+    let mouse = { x: 0, y: 0, active: false };
 
     function rand(min, max) {
       return Math.random() * (max - min) + min;
     }
 
-    const wallPadding = 20;
+    const wallPadding = 50;
     function spawnDot(faction, x, y, minSize, maxSize) {
       const size = rand(minSize, maxSize);
       const angle = rand(0, Math.PI * 2);
@@ -174,8 +199,11 @@
       const battleRadius = Number(controls.battleRadius.value);
       const magnetic = controls.movement.value === 'magnetic';
       const magnetStrength = Number(controls.magnetStrength.value) / 100;
+      const mouseAttraction = Number(controls.mouseAttraction.value) / 100;
       const influenceRadius = Math.max(8, Number(controls.maxSize.value) * 5);
       const influenceRadiusSq = influenceRadius * influenceRadius;
+      const mouseInfluenceRadius = 150;
+      const mouseInfluenceRadiusSq = mouseInfluenceRadius * mouseInfluenceRadius;
       const width = viewWidth;
       const height = viewHeight;
       const minX = wallPadding;
@@ -185,12 +213,17 @@
       const cellSize = Math.max(8, magnetic ? influenceRadius : battleRadius * 2);
       const cols = Math.ceil(width / cellSize);
       const rows = Math.ceil(height / cellSize);
-      const grid = new Array(cols * rows).fill(null).map(() => []);
+      const cellCount = cols * rows;
+      if (cellCount !== gridCells.length) {
+        gridCells = new Array(cellCount).fill(null).map(() => []);
+      } else {
+        for (let i = 0; i < gridCells.length; i++) gridCells[i].length = 0;
+      }
 
       for (const dot of dots) {
         const cx = Math.min(cols - 1, Math.max(0, Math.floor(dot.x / cellSize)));
         const cy = Math.min(rows - 1, Math.max(0, Math.floor(dot.y / cellSize)));
-        grid[cx + cy * cols].push(dot);
+        gridCells[cx + cy * cols].push(dot);
       }
 
       for (const dot of dots) {
@@ -204,7 +237,7 @@
               const nx = cx + ox;
               const ny = cy + oy;
               if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-              const neighborCell = grid[nx + ny * cols];
+              const neighborCell = gridCells[nx + ny * cols];
               if (!neighborCell.length) continue;
               for (const other of neighborCell) {
                 if (other === dot) continue;
@@ -232,6 +265,20 @@
             dot.vy = (dot.vy / speed) * maxSpeed;
           }
         }
+        if (mouse.active && mouseAttraction !== 0) {
+          const dx = mouse.x - dot.x;
+          const dy = mouse.y - dot.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq > 0 && distSq <= mouseInfluenceRadiusSq) {
+            const dist = Math.sqrt(distSq);
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+            const falloff = 1 - dist / mouseInfluenceRadius;
+            const force = mouseAttraction * falloff;
+            dot.vx += dirX * force * dt;
+            dot.vy += dirY * force * dt;
+          }
+        }
         dot.x += dot.vx * dt * speedScale;
         dot.y += dot.vy * dt * speedScale;
         const left = minX + dot.size;
@@ -244,17 +291,11 @@
         dot.y = Math.max(top, Math.min(bottom, dot.y));
       }
 
-      const battleGrid = new Array(cols * rows).fill(null).map(() => []);
-      for (const dot of dots) {
-        const cx = Math.min(cols - 1, Math.max(0, Math.floor(dot.x / cellSize)));
-        const cy = Math.min(rows - 1, Math.max(0, Math.floor(dot.y / cellSize)));
-        battleGrid[cx + cy * cols].push(dot);
-      }
-
       if (battleRadius > 0) {
+        const battleRadiusSq = battleRadius * battleRadius;
         for (let cy = 0; cy < rows; cy++) {
           for (let cx = 0; cx < cols; cx++) {
-            const cell = battleGrid[cx + cy * cols];
+            const cell = gridCells[cx + cy * cols];
             if (!cell.length) continue;
             for (const dot of cell) {
               for (let oy = -1; oy <= 1; oy++) {
@@ -262,7 +303,7 @@
                   const nx = cx + ox;
                   const ny = cy + oy;
                   if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-                  const neighborCell = battleGrid[nx + ny * cols];
+                  const neighborCell = gridCells[nx + ny * cols];
                   if (!neighborCell.length) continue;
                   for (const other of neighborCell) {
                     if (other === dot) continue;
@@ -270,7 +311,7 @@
                     const dx = other.x - dot.x;
                     const dy = other.y - dot.y;
                     const distSq = dx * dx + dy * dy;
-                    if (distSq <= battleRadius * battleRadius) {
+                    if (distSq <= battleRadiusSq) {
                       const total = dot.size + other.size;
                       const roll = Math.random() * total;
                       if (roll < dot.size) {
@@ -307,23 +348,41 @@
       const factions = Number(controls.factions.value);
       const counts = new Array(factions).fill(0);
       for (const dot of dots) counts[dot.faction]++;
+      const total = dots.length;
       const statsEl = document.getElementById('stats');
-      if (statsEl.children.length !== factions) {
-        statsEl.innerHTML = counts.map((_, i) => (
+      if (statsEl.children.length !== factions + 2) {
+        const factionButtons = counts.map((_, i) => (
           `<button type="button" data-faction="${i}"><span style="color:${palette[i % palette.length]}">■</span><span class="count">0</span></button>`
         )).join('');
+        statsEl.innerHTML = `${factionButtons}<div class="total"><strong>Total</strong> <span class="count">0</span></div><div class="fps"><strong>FPS</strong> <span class="count">0</span></div>`;
       }
       for (let i = 0; i < factions; i++) {
-        statsEl.children[i].querySelector('.count').textContent = counts[i];
+        const percent = total ? Math.round((counts[i] / total) * 100) : 0;
+        statsEl.children[i].querySelector('.count').textContent = `${counts[i]} (${percent}%)`;
       }
+      const totalEl = statsEl.querySelector('.total .count');
+      if (totalEl) totalEl.textContent = total;
+      const fpsEl = statsEl.querySelector('.fps .count');
+      if (fpsEl) fpsEl.textContent = Math.round(fps);
     }
 
     function loop(timestamp) {
+      if (lastFrameTime) {
+        const frameMs = timestamp - lastFrameTime;
+        if (frameMs > 0) {
+          const currentFps = 1000 / frameMs;
+          fps = fps ? fps * 0.9 + currentFps * 0.1 : currentFps;
+        }
+      }
+      lastFrameTime = timestamp;
       const dt = Math.min(32, timestamp - lastTime) / 16.67;
       lastTime = timestamp;
       if (!paused) update(dt);
       render();
-      updateStats();
+      if (timestamp >= nextStatsUpdate) {
+        updateStats();
+        nextStatsUpdate = timestamp + 250;
+      }
       requestAnimationFrame(loop);
     }
 
@@ -365,6 +424,15 @@
           break;
         }
       }
+    });
+    canvas.addEventListener('mousemove', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = event.clientX - rect.left;
+      mouse.y = event.clientY - rect.top;
+      mouse.active = true;
+    });
+    canvas.addEventListener('mouseleave', () => {
+      mouse.active = false;
     });
 
     init();
