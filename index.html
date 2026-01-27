@@ -389,6 +389,7 @@
     let mouse = { x: 0, y: 0, active: false };
             let menuDot = null;
     let hoverDot = null;
+    let clickImpulse = null;
     let lastSimulationTime = 0;
     let needsRender = true;
     let targetFps = 60;
@@ -449,6 +450,13 @@
     function update(dt) {
       const speedScale = Number(controls.speed.value) / 100;
       const battleRadius = Number(controls.battleRadius.value);
+      if (clickImpulse) {
+        clickImpulse.elapsed += dt * 16.67;
+        clickImpulse.decay = Math.max(0, 1 - clickImpulse.elapsed / clickImpulse.duration);
+        if (clickImpulse.decay === 0) {
+          clickImpulse = null;
+        }
+      }
       if (battleRadius <= 0) {
         const repelAll = controls.repelAll.checked;
         const magnetStrength = Number(controls.magnetStrength.value) / 100;
@@ -528,6 +536,20 @@
               const dirY = dy / dist;
               const falloff = 1 - dist / mouseInfluenceRadius;
               const force = mouseAttraction * falloff;
+              dot.vx += dirX * force * dt;
+              dot.vy += dirY * force * dt;
+            }
+          }
+          if (clickImpulse) {
+            const dx = dot.x - clickImpulse.x;
+            const dy = dot.y - clickImpulse.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq > 0 && distSq <= clickImpulse.radiusSq) {
+              const dist = Math.sqrt(distSq);
+              const dirX = dx / dist;
+              const dirY = dy / dist;
+              const falloff = 1 - dist / clickImpulse.radius;
+              const force = clickImpulse.strength * falloff * clickImpulse.decay;
               dot.vx += dirX * force * dt;
               dot.vy += dirY * force * dt;
             }
@@ -643,6 +665,20 @@
             dot.vy += dirY * force * dt;
           }
         }
+        if (clickImpulse) {
+          const dx = dot.x - clickImpulse.x;
+          const dy = dot.y - clickImpulse.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq > 0 && distSq <= clickImpulse.radiusSq) {
+            const dist = Math.sqrt(distSq);
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+            const falloff = 1 - dist / clickImpulse.radius;
+            const force = clickImpulse.strength * falloff * clickImpulse.decay;
+            dot.vx += dirX * force * dt;
+            dot.vy += dirY * force * dt;
+          }
+        }
         const wallRadius = Math.max(20, influenceRadius * 0.5);
         const wallStrength = 0.4;
         const bounceDamping = 0.6;
@@ -714,6 +750,15 @@
       const height = viewHeight;
       const padding = arenaPadding;
       ctx.clearRect(0, 0, width, height);
+      if (clickImpulse) {
+        const progress = Math.min(1, clickImpulse.elapsed / clickImpulse.duration);
+        const radius = clickImpulse.radius * progress;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(clickImpulse.x, clickImpulse.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       if (!fullscreen) {
         ctx.strokeStyle = '#1f2937';
         ctx.lineWidth = 2;
@@ -905,8 +950,21 @@
             dots.push(spawnDot(dot.faction, newX, newY, minSize, maxSize));
           }
           needsRender = true;
-          break;
+          return;
         }
+      }
+      if (!paused && event.shiftKey) {
+        clickImpulse = {
+          x,
+          y,
+          radius: 150,
+          radiusSq: 150 * 150,
+          strength: 2.4,
+          duration: 500,
+          elapsed: 0,
+          decay: 1,
+        };
+        needsRender = true;
       }
     });
     canvas.addEventListener('mousemove', (event) => {
