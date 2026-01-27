@@ -12,10 +12,12 @@
     body.fullscreen #stats { display: none; }
     body.fullscreen #main { grid-template-rows: 1fr; }
     body.controls-collapsed { grid-template-columns: 56px 1fr; }
-    #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+    #controls { padding: 16px; border-right: 1px solid #3334; display: grid; gap: 12px; align-content: start; min-height: 0; overflow: hidden; }
+    #controls .controls-scroll { overflow-y: auto; overflow-x: hidden; min-height: 0; display: grid; gap: 12px; align-content: start; }
     body.controls-collapsed #controls { padding: 8px; }
     body.controls-collapsed #controls > :not(.control-bar) { display: none; }
-    .control-bar { display: flex; gap: 8px; align-items: center; }
+    .control-bar { display: flex; gap: 8px; align-items: center; position: sticky; top: 0; z-index: 2; background: #0f141b; padding-bottom: 8px; }
+    body.controls-collapsed .control-bar { padding-bottom: 0; }
     body.controls-collapsed .control-bar { flex-direction: column; }
     .control-bar button { width: 40px; height: 40px; padding: 0; border-radius: 10px; border: 1px solid #3334; background: #111827; color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; }
     .control-bar button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
@@ -23,7 +25,7 @@
     details { border: 1px solid #3334; border-radius: 6px; padding: 8px; }
     summary { cursor: pointer; font-weight: 600; }
     details > .section-body { display: grid; gap: 12px; margin-top: 10px; }
-    #main { display: grid; grid-template-rows: auto 1fr; min-height: 0; position: relative; }
+    #main { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; position: relative; }
     #stats { padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; background: #0f141b; border-bottom: 1px solid #3334; }
     #stats div { min-width: 132px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
     #stats button { background: none; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; min-width: 132px; justify-content: flex-start; }
@@ -75,9 +77,10 @@
         <button id="pause" type="button" aria-label="Pause" title="Pause">⏸</button>
         <button id="fullscreen" type="button" aria-label="Fullscreen" title="Fullscreen">⛶</button>
       </div>
-      <details open>
-        <summary>Variables</summary>
-        <div class="section-body">
+      <div class="controls-scroll">
+        <details open>
+          <summary>Variables</summary>
+          <div class="section-body">
           <label>Speed
             <div class="row"><input id="speed" type="range" min="5" max="300" step="5" value="60"><span id="speedVal" class="value"></span></div>
           </label>
@@ -95,10 +98,10 @@
           </label>
           <label class="row"><input id="repelAll" type="checkbox">Repel all colors</label>
         </div>
-      </details>
-      <details>
-        <summary>Setup</summary>
-        <div class="section-body">
+        </details>
+        <details>
+          <summary>Setup</summary>
+          <div class="section-body">
           <label>Dots
             <div class="row"><input id="count" type="range" min="100" max="2000" step="10" value="500"><span id="countVal" class="value"></span></div>
           </label>
@@ -110,19 +113,34 @@
           </label>
           <div class="palette-editor" aria-label="Palette editor">
             <div class="palette-rows" id="paletteRows"></div>
-            <div class="palette-actions">
-              <button id="addColor" class="icon-button" type="button" aria-label="Add color" title="Add color">+</button>
-              <button id="clearPalette" class="icon-button" type="button" aria-label="Remove all colors" title="Remove all colors">🗑</button>
-              <button id="randomizePalette" class="icon-button" type="button" aria-label="Randomize palette" title="Randomize palette">🎲</button>
-              <button id="resetPalette" class="icon-button" type="button" aria-label="Reset palette" title="Reset palette">↺</button>
-            </div>
-            <label>Load palette
-              <textarea id="paletteInput" placeholder='["#ff0000", "#00ff00"] or ff0000 00ff00'></textarea>
-            </label>
+          <div class="palette-actions">
+            <button id="addColor" class="icon-button" type="button" aria-label="Add color" title="Add color">+</button>
+            <button id="clearPalette" class="icon-button" type="button" aria-label="Remove all colors" title="Remove all colors">🗑</button>
+            <button id="randomizePalette" class="icon-button" type="button" aria-label="Randomize palette" title="Randomize palette">🎲</button>
+            <button id="resetPalette" class="icon-button" type="button" aria-label="Reset palette" title="Reset palette">↺</button>
+          </div>
+          <label>Palette name
+            <input id="paletteName" type="text" placeholder="My palette">
+          </label>
+          <div class="palette-actions">
+            <button id="savePalette" type="button">Save favorite</button>
+            <button id="exportPalette" type="button">Copy JSON</button>
+          </div>
+          <label>Favorites
+            <select id="paletteFavorites"></select>
+          </label>
+          <div class="palette-actions">
+            <button id="loadFavorite" type="button">Load favorite</button>
+            <button id="deleteFavorite" type="button">Delete favorite</button>
+          </div>
+          <label>Load palette
+            <textarea id="paletteInput" placeholder='["#ff0000", "#00ff00"] or ff0000 00ff00'></textarea>
+          </label>
             <button id="loadPalette" type="button">Load from palette</button>
           </div>
-        </div>
-      </details>
+          </div>
+        </details>
+      </div>
     </section>
   <section id="main">
     <div id="stats"></div>
@@ -156,6 +174,12 @@
     const resetPaletteButton = document.getElementById('resetPalette');
     const loadPaletteButton = document.getElementById('loadPalette');
     const paletteInput = document.getElementById('paletteInput');
+    const paletteNameInput = document.getElementById('paletteName');
+    const savePaletteButton = document.getElementById('savePalette');
+    const exportPaletteButton = document.getElementById('exportPalette');
+    const favoritesSelect = document.getElementById('paletteFavorites');
+    const loadFavoriteButton = document.getElementById('loadFavorite');
+    const deleteFavoriteButton = document.getElementById('deleteFavorite');
     const controls = {
       count: document.getElementById('count'),
       speed: document.getElementById('speed'),
@@ -200,17 +224,37 @@
 
     let viewWidth = 0;
     let viewHeight = 0;
+    let fullscreen = false;
     function resizeCanvas() {
       const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      viewWidth = rect.width;
-      viewHeight = rect.height;
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
+      let width = 0;
+      let height = 0;
+      if (fullscreen) {
+        width = window.innerWidth;
+        height = window.innerHeight + 5;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        width = rect.width;
+        height = rect.height;
+        canvas.style.width = '';
+        canvas.style.height = '';
+      }
+      viewWidth = width;
+      viewHeight = height;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
+    requestAnimationFrame(resizeCanvas);
+    const resizeObserver = new ResizeObserver(() => {
+      resizeCanvas();
+      needsRender = true;
+    });
+    resizeObserver.observe(canvas);
 
     const defaultPalette = [
       '#dc143c',            // red (dark)
@@ -277,6 +321,23 @@
         .map((token) => normalizeHex(token))
         .filter(Boolean);
     }
+    const favoritesStorageKey = 'dotbattle.paletteFavorites';
+    function getFavorites() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(favoritesStorageKey) || '[]');
+        return Array.isArray(stored) ? stored : [];
+      } catch (error) {
+        return [];
+      }
+    }
+    function saveFavorites(favorites) {
+      localStorage.setItem(favoritesStorageKey, JSON.stringify(favorites));
+    }
+    function refreshFavoritesSelect(favorites = getFavorites()) {
+      favoritesSelect.innerHTML = favorites.map((fav, index) => (
+        `<option value="${index}">${fav.name}</option>`
+      )).join('');
+    }
     function getFactionColor(faction) {
       if (!palette.length) return '#111827';
       return palette[faction % palette.length];
@@ -316,6 +377,7 @@
       renderPaletteEditor();
     }
     renderPaletteEditor();
+    refreshFavoritesSelect();
 
     let dots = [];
     let paused = false;
@@ -325,8 +387,8 @@
     let lastFrameTime = 0;
     let fps = 0;
     let mouse = { x: 0, y: 0, active: false };
-            let fullscreen = false;
             let menuDot = null;
+    let hoverDot = null;
     let lastSimulationTime = 0;
     let needsRender = true;
     let targetFps = 60;
@@ -335,7 +397,7 @@
       return Math.random() * (max - min) + min;
     }
 
-    const arenaPadding = { top: 12, right: 12, bottom: 80, left: 12 };
+    const arenaPadding = { top: 12, right: 12, bottom: 20, left: 12 };
     function spawnDot(faction, x, y, minSize, maxSize) {
       const size = rand(minSize, maxSize);
       const angle = rand(0, Math.PI * 2);
@@ -372,6 +434,17 @@
         };
       });
     }
+    function exitFullscreen() {
+      fullscreen = false;
+      document.body.classList.remove('fullscreen');
+      requestAnimationFrame(() => {
+        resizeCanvas();
+        requestAnimationFrame(() => {
+          resizeCanvas();
+          needsRender = true;
+        });
+      });
+    }
 
     function update(dt) {
       const speedScale = Number(controls.speed.value) / 100;
@@ -386,10 +459,11 @@
         const mouseInfluenceRadiusSq = mouseInfluenceRadius * mouseInfluenceRadius;
         const width = viewWidth;
         const height = viewHeight;
-        const minX = arenaPadding.left;
-        const minY = arenaPadding.top;
-        const maxX = width - arenaPadding.right;
-        const maxY = height - arenaPadding.bottom;
+        const padding = fullscreen ? arenaPadding : arenaPadding;
+        const minX = padding.left;
+        const minY = padding.top;
+        const maxX = width - padding.right;
+        const maxY = height - padding.bottom;
         const cellSize = Math.max(8, influenceRadius);
         const cols = Math.ceil(width / cellSize);
         const rows = Math.ceil(height / cellSize);
@@ -421,12 +495,15 @@
                 const dx = other.x - dot.x;
                 const dy = other.y - dot.y;
                 const distSq = dx * dx + dy * dy;
-                if (distSq === 0 || distSq > influenceRadiusSq) continue;
+                const sizeFactor = other.size / Number(controls.maxSize.value);
+                const effectiveRadius = influenceRadius * (0.6 + sizeFactor);
+                const effectiveRadiusSq = effectiveRadius * effectiveRadius;
+                if (distSq === 0 || distSq > effectiveRadiusSq) continue;
                 const dist = Math.sqrt(distSq);
                 const dirX = dx / dist;
                 const dirY = dy / dist;
-                const falloff = 1 - dist / influenceRadius;
-                const force = magnetStrength * falloff;
+                const falloff = 1 - dist / effectiveRadius;
+                const force = magnetStrength * falloff * (0.5 + sizeFactor * sizeFactor);
                 const sign = repelAll ? -1 : (other.faction === dot.faction ? -1 : 1);
                 ax += dirX * force * sign;
                 ay += dirY * force * sign;
@@ -455,14 +532,27 @@
               dot.vy += dirY * force * dt;
             }
           }
-          dot.x += dot.vx * dt * speedScale;
-          dot.y += dot.vy * dt * speedScale;
+          const wallRadius = Math.max(20, influenceRadius * 0.5);
+          const wallStrength = 0.4;
+          const bounceDamping = 0.6;
           const left = minX + dot.size;
           const right = maxX - dot.size;
           const top = minY + dot.size;
           const bottom = maxY - dot.size;
-          if (dot.x < left || dot.x > right) dot.vx *= -1;
-          if (dot.y < top || dot.y > bottom) dot.vy *= -1;
+          const leftDist = dot.x - left;
+          const rightDist = right - dot.x;
+          const topDist = dot.y - top;
+          const bottomDist = bottom - dot.y;
+          if (leftDist < wallRadius) dot.vx += (1 - leftDist / wallRadius) * wallStrength * dt;
+          if (rightDist < wallRadius) dot.vx -= (1 - rightDist / wallRadius) * wallStrength * dt;
+          if (topDist < wallRadius) dot.vy += (1 - topDist / wallRadius) * wallStrength * dt;
+          if (bottomDist < wallRadius) dot.vy -= (1 - bottomDist / wallRadius) * wallStrength * dt;
+          const preX = dot.x;
+          const preY = dot.y;
+          dot.x += dot.vx * dt * speedScale;
+          dot.y += dot.vy * dt * speedScale;
+          if (dot.x <= left || dot.x >= right) dot.vx *= -bounceDamping;
+          if (dot.y <= top || dot.y >= bottom) dot.vy *= -bounceDamping;
           dot.x = Math.max(left, Math.min(right, dot.x));
           dot.y = Math.max(top, Math.min(bottom, dot.y));
         }
@@ -478,10 +568,11 @@
       const mouseInfluenceRadiusSq = mouseInfluenceRadius * mouseInfluenceRadius;
       const width = viewWidth;
       const height = viewHeight;
-      const minX = arenaPadding.left;
-      const minY = arenaPadding.top;
-      const maxX = width - arenaPadding.right;
-      const maxY = height - arenaPadding.bottom;
+      const padding = arenaPadding;
+      const minX = padding.left;
+      const minY = padding.top;
+      const maxX = width - padding.right;
+      const maxY = height - padding.bottom;
       const cellSize = Math.max(8, influenceRadius);
       const cols = Math.ceil(width / cellSize);
       const rows = Math.ceil(height / cellSize);
@@ -515,12 +606,15 @@
               const dx = other.x - dot.x;
               const dy = other.y - dot.y;
               const distSq = dx * dx + dy * dy;
-              if (distSq === 0 || distSq > influenceRadiusSq) continue;
+              const sizeFactor = other.size / Number(controls.maxSize.value);
+              const effectiveRadius = influenceRadius * (0.6 + sizeFactor);
+              const effectiveRadiusSq = effectiveRadius * effectiveRadius;
+              if (distSq === 0 || distSq > effectiveRadiusSq) continue;
               const dist = Math.sqrt(distSq);
               const dirX = dx / dist;
               const dirY = dy / dist;
-              const falloff = 1 - dist / influenceRadius;
-              const force = magnetStrength * falloff;
+              const falloff = 1 - dist / effectiveRadius;
+              const force = magnetStrength * falloff * (0.5 + sizeFactor * sizeFactor);
               const sign = repelAll ? -1 : (other.faction === dot.faction ? -1 : 1);
               ax += dirX * force * sign;
               ay += dirY * force * sign;
@@ -549,14 +643,27 @@
             dot.vy += dirY * force * dt;
           }
         }
-        dot.x += dot.vx * dt * speedScale;
-        dot.y += dot.vy * dt * speedScale;
+        const wallRadius = Math.max(20, influenceRadius * 0.5);
+        const wallStrength = 0.4;
+        const bounceDamping = 0.6;
         const left = minX + dot.size;
         const right = maxX - dot.size;
         const top = minY + dot.size;
         const bottom = maxY - dot.size;
-        if (dot.x < left || dot.x > right) dot.vx *= -1;
-        if (dot.y < top || dot.y > bottom) dot.vy *= -1;
+        const leftDist = dot.x - left;
+        const rightDist = right - dot.x;
+        const topDist = dot.y - top;
+        const bottomDist = bottom - dot.y;
+        if (leftDist < wallRadius) dot.vx += (1 - leftDist / wallRadius) * wallStrength * dt;
+        if (rightDist < wallRadius) dot.vx -= (1 - rightDist / wallRadius) * wallStrength * dt;
+        if (topDist < wallRadius) dot.vy += (1 - topDist / wallRadius) * wallStrength * dt;
+        if (bottomDist < wallRadius) dot.vy -= (1 - bottomDist / wallRadius) * wallStrength * dt;
+        const preX = dot.x;
+        const preY = dot.y;
+        dot.x += dot.vx * dt * speedScale;
+        dot.y += dot.vy * dt * speedScale;
+        if (dot.x <= left || dot.x >= right) dot.vx *= -bounceDamping;
+        if (dot.y <= top || dot.y >= bottom) dot.vy *= -bounceDamping;
         dot.x = Math.max(left, Math.min(right, dot.x));
         dot.y = Math.max(top, Math.min(bottom, dot.y));
       }
@@ -582,9 +689,11 @@
                     const dy = other.y - dot.y;
                     const distSq = dx * dx + dy * dy;
                     if (distSq <= battleRadiusSq) {
-                      const total = dot.size + other.size;
+                      const dotWeight = dot.size * dot.size;
+                      const otherWeight = other.size * other.size;
+                      const total = dotWeight + otherWeight;
                       const roll = Math.random() * total;
-                      if (roll < dot.size) {
+                      if (roll < dotWeight) {
                         other.faction = dot.faction;
                       } else {
                         dot.faction = other.faction;
@@ -603,22 +712,34 @@
     function render() {
       const width = viewWidth;
       const height = viewHeight;
+      const padding = arenaPadding;
       ctx.clearRect(0, 0, width, height);
       if (!fullscreen) {
         ctx.strokeStyle = '#1f2937';
         ctx.lineWidth = 2;
-        ctx.strokeRect(
-          arenaPadding.left,
-          arenaPadding.top,
-          width - arenaPadding.left - arenaPadding.right,
-          height - arenaPadding.top - arenaPadding.bottom
-        );
+         ctx.strokeRect(
+           padding.left,
+           padding.top,
+           width - padding.left - padding.right,
+           height - padding.top - padding.bottom
+         );
       }
       for (const dot of dots) {
         ctx.fillStyle = getFactionColor(dot.faction);
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
         ctx.fill();
+      }
+      if (paused && hoverDot) {
+        if (!dots.includes(hoverDot)) {
+          hoverDot = null;
+        } else {
+          ctx.strokeStyle = 'limegreen';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(hoverDot.x, hoverDot.y, hoverDot.size + 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
     }
 
@@ -703,17 +824,18 @@
     controlsToggle.addEventListener('click', () => {
       const collapsed = document.body.classList.toggle('controls-collapsed');
       controlsToggle.setAttribute('aria-expanded', String(!collapsed));
+      resizeCanvas();
       needsRender = true;
     });
-        controls.fullscreen.addEventListener('click', () => {
-          fullscreen = true;
-          mouse.active = false;
-          dotMenu.style.display = 'none';
-          dotColorList.style.display = 'none';
-          menuDot = null;
-          document.body.classList.add('fullscreen');
-          resizeCanvas();
-          needsRender = true;
+    controls.fullscreen.addEventListener('click', () => {
+      fullscreen = true;
+      mouse.active = false;
+      dotMenu.style.display = 'none';
+      dotColorList.style.display = 'none';
+      menuDot = null;
+      document.body.classList.add('fullscreen');
+      resizeCanvas();
+      needsRender = true;
     });
     function removeFactionDots(faction, count) {
       let removed = 0;
@@ -759,10 +881,7 @@
     });
     canvas.addEventListener('click', (event) => {
       if (fullscreen) {
-        fullscreen = false;
-        document.body.classList.remove('fullscreen');
-        resizeCanvas();
-        needsRender = true;
+        exitFullscreen();
         return;
       }
       dotMenu.style.display = 'none';
@@ -796,16 +915,30 @@
       mouse.x = event.clientX - rect.left;
       mouse.y = event.clientY - rect.top;
       mouse.active = true;
+      if (paused) {
+        hoverDot = null;
+        for (let i = dots.length - 1; i >= 0; i--) {
+          const dot = dots[i];
+          const dx = mouse.x - dot.x;
+          const dy = mouse.y - dot.y;
+          if (dx * dx + dy * dy <= dot.size * dot.size) {
+            hoverDot = dot;
+            break;
+          }
+        }
+        needsRender = true;
+      }
     });
     canvas.addEventListener('mouseleave', () => {
       mouse.active = false;
+      if (paused && hoverDot) {
+        hoverDot = null;
+        needsRender = true;
+      }
     });
             document.addEventListener('keydown', () => {
               if (fullscreen) {
-                fullscreen = false;
-                document.body.classList.remove('fullscreen');
-                resizeCanvas();
-                needsRender = true;
+                exitFullscreen();
               }
               dotMenu.style.display = 'none';
               dotColorList.style.display = 'none';
@@ -814,10 +947,7 @@
             });
             document.addEventListener('mousedown', () => {
               if (fullscreen) {
-                fullscreen = false;
-                document.body.classList.remove('fullscreen');
-                resizeCanvas();
-                needsRender = true;
+                exitFullscreen();
               }
               if (!dotMenu.contains(event.target)) {
                 dotMenu.style.display = 'none';
@@ -911,6 +1041,38 @@
     resetPaletteButton.addEventListener('click', () => {
       applyPalette([...defaultPalette]);
       needsRender = true;
+    });
+    exportPaletteButton.addEventListener('click', async () => {
+      const json = JSON.stringify(palette, null, 2);
+      try {
+        await navigator.clipboard.writeText(json);
+      } catch (error) {
+        paletteInput.value = json;
+      }
+    });
+    savePaletteButton.addEventListener('click', () => {
+      const name = paletteNameInput.value.trim() || `Palette ${new Date().toLocaleString()}`;
+      const favorites = getFavorites();
+      favorites.push({ name, colors: [...palette] });
+      saveFavorites(favorites);
+      refreshFavoritesSelect(favorites);
+      paletteNameInput.value = '';
+    });
+    loadFavoriteButton.addEventListener('click', () => {
+      const favorites = getFavorites();
+      const index = Number(favoritesSelect.value);
+      const selected = favorites[index];
+      if (!selected) return;
+      applyPalette(selected.colors.map((color) => normalizeHex(color)).filter(Boolean));
+      needsRender = true;
+    });
+    deleteFavoriteButton.addEventListener('click', () => {
+      const favorites = getFavorites();
+      const index = Number(favoritesSelect.value);
+      if (!Number.isFinite(index)) return;
+      favorites.splice(index, 1);
+      saveFavorites(favorites);
+      refreshFavoritesSelect(favorites);
     });
     loadPaletteButton.addEventListener('click', () => {
       const loaded = parsePaletteInput(paletteInput.value);
