@@ -214,7 +214,8 @@ function App() {
       window.removeEventListener('resize', handleResize)
       sim.stop()
     }
-  }, [controls])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only create simulation once on mount
 
   useEffect(() => {
     paletteRef.current = palette

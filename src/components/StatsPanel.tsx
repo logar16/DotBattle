@@ -41,7 +41,6 @@ export function StatsPanel({
         const percent = total ? Math.round((count / total) * 100) : 0
         const color = palette[index % palette.length] ?? '#111827'
         return (
-          // edge-tools-disable-next-line no-inline-styles -- Dynamic runtime color from user palette, no alternative
           <button
             type="button"
             data-faction={index}
