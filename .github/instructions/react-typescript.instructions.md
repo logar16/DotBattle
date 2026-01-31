@@ -36,17 +36,109 @@ const [dots, setDots] = useState<Dot[]>([]); // Never do this!
 
 ## Radix UI Component Requirements
 
-**All form inputs MUST use Radix UI components** - no native HTML inputs (except `<input type="color">` since Radix has no color picker).
+**All form inputs and interactive elements MUST use Radix UI components** - no native HTML elements (except `<input type="color">` since Radix has no color picker).
 
-### Required Radix Components
+### Required Radix Packages
+
+#### Radix Primitives (for specialized controls)
 - `@radix-ui/react-slider` → all range inputs (speed, size, radius, etc.)
 - `@radix-ui/react-checkbox` → all checkboxes
 - `@radix-ui/react-select` → all dropdowns/selects
 - `@radix-ui/react-dialog` → all modals/dialogs
 - `@radix-ui/react-context-menu` → right-click menus
 - `@radix-ui/react-popover` → popovers
+- `@radix-ui/react-accordion` → collapsible sections
+
+#### Radix Themes (for common UI elements)
+- `@radix-ui/themes` → Button, TextField, TextArea, Box, Flex, Card, Text, Heading, etc.
+
+**Setup:** Wrap app root with `<Theme>` from `@radix-ui/themes`:
+```typescript
+// App.tsx or main component
+import { Theme } from '@radix-ui/themes'
+import '@radix-ui/themes/styles.css'
+
+function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  return (
+    <Theme appearance={theme} accentColor="blue" grayColor="slate" radius="medium" scaling="95%">
+      {/* Your app content */}
+    </Theme>
+  );
+}
+```
+
+**Theme Management:**
+- Always store theme preference in localStorage: `localStorage.setItem('dotbattle.theme', theme)`
+- Provide theme toggle UI (sun/moon icon button)
+- Use `appearance` prop on Theme to control light/dark mode
 
 ### Standard Patterns
+
+**Button:**
+```typescript
+import { Button } from '@radix-ui/themes';
+
+// Icon button
+<Button variant="ghost" onClick={handleClick}>
+  <Icon size={16} />
+</Button>
+
+// Button with text
+<Button variant="soft" onClick={handleSave}>
+  <Save size={16} />
+  <span>Save</span>
+</Button>
+
+// Variants: solid (default), soft, outline, ghost
+```
+
+**TextField (text input):**
+```typescript
+import { TextField } from '@radix-ui/themes';
+
+<TextField.Root
+  value={value}
+  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
+  placeholder="Enter text"
+/>
+```
+
+**TextArea:**
+```typescript
+import { TextArea } from '@radix-ui/themes';
+
+<TextArea
+  value={value}
+  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
+  placeholder="Enter multiline text"
+/>
+```
+
+**Layout Components:**
+```typescript
+import { Box, Flex, Card, Text, Heading } from '@radix-ui/themes';
+
+// Card for panels/sections
+<Card>
+  <Heading as="h3" size="3">Section Title</Heading>
+  <Flex direction="column" gap="4" mt="4">
+    {/* Content */}
+  </Flex>
+</Card>
+
+// Flex for layouts
+<Flex gap="2" align="center" justify="between">
+  <Text>Label</Text>
+  <Button>Action</Button>
+</Flex>
+
+// Box for containers
+<Box className="custom-class" p="4">
+  {/* Content */}
+</Box>
+```
 
 **Slider with value display:**
 ```typescript
@@ -76,6 +168,30 @@ import { Check } from 'lucide-react';
   </Checkbox.Root>
   Label text
 </label>
+```
+
+**Accordion (Collapsible Sections):**
+```typescript
+import * as Accordion from '@radix-ui/react-accordion';
+import { ChevronDown } from 'lucide-react';
+
+<Accordion.Root type="multiple" defaultValue={['section1', 'section2']}>
+  <Accordion.Item value="section1">
+    <Accordion.Header>
+      <Accordion.Trigger className="accordion-trigger">
+        <Flex align="center" justify="between" width="100%">
+          <Heading as="h3" size="3">Section Title</Heading>
+          <ChevronDown className="accordion-chevron" size={18} />
+        </Flex>
+      </Accordion.Trigger>
+    </Accordion.Header>
+    <Accordion.Content className="accordion-content">
+      <Flex direction="column" gap="4" mt="2">
+        {/* Section content */}
+      </Flex>
+    </Accordion.Content>
+  </Accordion.Item>
+</Accordion.Root>
 ```
 
 **Select/Dropdown:**
@@ -136,7 +252,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({ palette, controls, onPaletteChange, onControlChange }: SettingsPanelProps) {
   // Component-specific UI state
   const [dialogOpen, setDialogOpen] = useState(false);
-  
+
   return <section className="settings">...</section>;
 }
 ```
@@ -237,19 +353,28 @@ If you encounter a situation where inline styles seem unavoidable (e.g., dynamic
 ### General Styling Guidelines
 
 - **All styles in CSS files** - no inline styles or CSS-in-JS
-- **Radix components are unstyled** - add styles in App.css or component.css
-- **Use CSS custom properties** for theming: `var(--color-primary)`
-- **Use data attributes** for Radix states: `[data-state="checked"]`, `[data-highlighted]`
+- **Radix components are styled** - use their variants and props for common patterns
+- **Use Radix layout components** (Box, Flex, Card) instead of divs for automatic theme adaptation
+- **Use CSS theme tokens** for custom styles to support light/dark modes:
+  - Colors: `var(--gray-1)` through `var(--gray-12)`, `var(--accent-9)`, `var(--color-background)`, `var(--color-panel)`, `var(--color-surface)`
+  - Shadows: `var(--shadow-1)` through `var(--shadow-6)`
+  - Borders: `var(--gray-6)` or `var(--gray-7)`
+- **Use data attributes** for Radix primitive states: `[data-state="checked"]`, `[data-highlighted]`
 
 ```css
-/* Radix Slider */
-.slider-root { position: relative; display: flex; align-items: center; }
-.slider-track { background-color: #ddd; flex-grow: 1; height: 4px; }
-.slider-range { background-color: var(--color-primary); height: 100%; }
-.slider-thumb { width: 16px; height: 16px; background: white; border: 2px solid var(--color-primary); }
+/* GOOD: Theme-aware colors */
+.custom-panel {
+  background: var(--color-panel);
+  border: 1px solid var(--gray-6);
+  color: var(--gray-12);
+}
 
-/* Radix Select */
-.select-item[data-highlighted] { background-color: var(--color-primary); color: white; }
+/* BAD: Hardcoded dark mode colors */
+.custom-panel {
+  background: #111827;
+  border: 1px solid #3334;
+  color: #e2e8f0;
+}
 ```
 
 ## Common Pitfalls
@@ -261,7 +386,10 @@ function App() {
   const sim = new Simulation(canvas, palette); // BAD!
 }
 
-// Don't use native inputs
+// Don't use native inputs (except color picker)
+<input type="text" value={name} onChange={e => setName(e.target.value)} /> // BAD!
+<textarea value={text} onChange={e => setText(e.target.value)} /> // BAD!
+<button onClick={handleClick}>Click me</button> // BAD!
 <input type="range" value={speed} onChange={e => setSpeed(+e.target.value)} /> // BAD!
 
 // Don't store canvas data in state
@@ -282,7 +410,13 @@ function App() {
   }, []);
 }
 
-// Use Radix components
+// Use Radix Themes components
+import { Button, TextField, TextArea } from '@radix-ui/themes';
+<TextField.Root value={name} onChange={e => setName(e.target.value)} /> // GOOD!
+<TextArea value={text} onChange={e => setText(e.target.value)} /> // GOOD!
+<Button onClick={handleClick}>Click me</Button> // GOOD!
+
+// Use Radix primitives for specialized controls
 <Slider.Root value={[speed]} onValueChange={([v]) => setSpeed(v)} /> // GOOD!
 
 // Keep canvas data in the class
@@ -316,9 +450,16 @@ When creating components:
 
 After installing new Radix packages:
 ```bash
+# Primitives (specialized controls)
 npm install @radix-ui/react-slider
+
+# Themes (common UI elements)
+npm install @radix-ui/themes
+
 npm run dev # Restart dev server to resolve imports
 ```
+
+**Don't forget:** Wrap app with `<Theme>` and import `@radix-ui/themes/styles.css` when adding Themes package.
 
 ---
 

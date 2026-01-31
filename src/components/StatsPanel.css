@@ -1,7 +1,7 @@
 .stats {
   padding: 8px 12px;
-  background: #0f141b;
-  border-bottom: 1px solid #3334;
+  background: var(--color-panel);
+  border-bottom: 1px solid var(--gray-6);
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
@@ -21,7 +21,7 @@
 .stats button {
   background: none;
   border: 0;
-  color: inherit;
+  color: var(--gray-12);
   font: inherit;
   padding: 0;
   cursor: pointer;
@@ -35,7 +35,7 @@
 
 .faction-swatch {
   font-size: 22px;
-  color: var(--faction-color, #111827);
+  color: var(--faction-color, var(--gray-9));
 }
 
 .stats .count {
@@ -44,7 +44,7 @@
 }
 
 .stats button:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--accent-9);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -62,9 +62,9 @@
   width: 36px;
   height: 36px;
   padding: 0;
-  border: 1px solid #3334;
+  border: 1px solid var(--gray-6);
   border-radius: 999px;
-  background: #111827;
+  background: var(--gray-3);
   line-height: 1;
   cursor: help;
   font-size: 24px;
@@ -74,7 +74,7 @@
 }
 
 .info-tooltip button:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--accent-9);
   outline-offset: 2px;
 }
 
@@ -85,14 +85,15 @@
   width: 300px;
   padding: 10px 12px;
   border-radius: 6px;
-  background: #0f141b;
-  border: 1px solid #3334;
+  background: var(--color-panel);
+  border: 1px solid var(--gray-6);
   font-size: 13px;
-  color: inherit;
-  box-shadow: 0 4px 12px #0008;
+  color: var(--gray-12);
+  box-shadow: var(--shadow-5);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s ease;
+  z-index: 1000;
 }
 
 .info-tooltip button:hover + span,
