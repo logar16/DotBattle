@@ -1,4 +1,3 @@
-import * as Checkbox from "@radix-ui/react-checkbox";
 import * as Accordion from "@radix-ui/react-accordion";
 import {
   Button,
@@ -12,7 +11,6 @@ import {
   Select,
 } from "@radix-ui/themes";
 import {
-  Check,
   ChevronDown,
   Copy,
   Download,
@@ -24,16 +22,16 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import type { SimControls } from "../sim/types";
+import type { NewSimControls } from "../sim/types";
 import type { Favorite } from "../types";
 import { SliderInput } from "./SliderInput";
+import { SharedSetupSettings } from "./SharedSetupSettings";
+import { BattleSettings } from "./BattleSettings";
+import { SimulationSettings } from "./SimulationSettings";
 
 type SettingsPanelProps = {
-  controls: SimControls;
-  onControlChange: <K extends keyof SimControls>(
-    key: K,
-    value: SimControls[K],
-  ) => void;
+  controls: NewSimControls;
+  onControlChange: (key: string, value: any) => void;
   paletteColors: string[];
   paletteInput: string;
   setPaletteInput: (value: string) => void;
@@ -58,6 +56,8 @@ type SettingsPanelProps = {
   setFavoritesImport: (value: string) => void;
   onImportFavorites: () => void;
   onAddDotsForFaction: (index: number) => void;
+  onRemoveFactionDots: (faction: number, count?: number) => void;
+  onSetAllToFaction: (faction: number) => void;
 };
 
 export type ContextMenuSizeSliderProps = {
@@ -107,7 +107,11 @@ export function SettingsPanel({
   setFavoritesImport,
   onImportFavorites,
   onAddDotsForFaction,
+  onRemoveFactionDots,
+  onSetAllToFaction,
 }: SettingsPanelProps) {
+  const mode = 'mode' in controls ? controls.mode : 'battle';
+
   return (
     <Accordion.Root
       type="multiple"
@@ -124,97 +128,22 @@ export function SettingsPanel({
           </Flex>
         </Accordion.Trigger>
         <Accordion.Content className="accordion-content">
-          <Flex direction="column" gap="4">
-            <label className="control-label">
-              <span>Speed</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={5}
-                  max={300}
-                  step={5}
-                  value={controls.speed}
-                  onValueChange={(value) => onControlChange("speed", value)}
-                />
-                <Text className="value">{controls.speed}</Text>
-              </Flex>
-            </label>
-            <label className="control-label">
-              <span>Battle radius</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={0}
-                  max={20}
-                  step={1}
-                  value={controls.battleRadius}
-                  onValueChange={(value) =>
-                    onControlChange("battleRadius", value)
-                  }
-                />
-                <Text className="value">{controls.battleRadius}</Text>
-              </Flex>
-            </label>
-            <label className="control-label">
-              <span>Magnet strength</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={0}
-                  max={200}
-                  step={5}
-                  value={controls.magnetStrength}
-                  onValueChange={(value) =>
-                    onControlChange("magnetStrength", value)
-                  }
-                />
-                <Text className="value">{controls.magnetStrength}</Text>
-              </Flex>
-            </label>
-            <label className="control-label">
-              <span>Mouse attraction power</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={-1}
-                  max={1}
-                  step={0.05}
-                  value={controls.mouseAttraction}
-                  onValueChange={(value) =>
-                    onControlChange("mouseAttraction", value)
-                  }
-                />
-                <Text className="value">
-                  {controls.mouseAttraction.toFixed(2)}
-                </Text>
-              </Flex>
-            </label>
-            <label className="control-label">
-              <span>Mouse attraction range</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={100}
-                  max={500}
-                  step={10}
-                  value={controls.mouseRange}
-                  onValueChange={(value) =>
-                    onControlChange("mouseRange", value)
-                  }
-                />
-                <Text className="value">{controls.mouseRange}</Text>
-              </Flex>
-            </label>
-            <label className="control-toggle" title="Repel all colors">
-              <Checkbox.Root
-                className="checkbox-root"
-                checked={controls.repelAll}
-                onCheckedChange={(checked) =>
-                  onControlChange("repelAll", checked === true)
-                }
-              >
-                <Checkbox.Indicator className="checkbox-indicator">
-                  <Check size={20} />
-                </Checkbox.Indicator>
-              </Checkbox.Root>
-              <span>Repel all colors</span>
-            </label>
-          </Flex>
+          {mode === "battle" && (
+            <BattleSettings
+              controls={controls as any}
+              palette={paletteColors}
+              onControlChange={onControlChange as any}
+              onAddDotsForFaction={onAddDotsForFaction}
+              onRemoveFactionDots={onRemoveFactionDots}
+              onSetAllToFaction={onSetAllToFaction}
+            />
+          )}
+          {mode === "simulation" && (
+            <SimulationSettings
+              controls={controls as any}
+              onControlChange={onControlChange as any}
+            />
+          )}
         </Accordion.Content>
       </Accordion.Item>
 
@@ -229,48 +158,28 @@ export function SettingsPanel({
         </Accordion.Trigger>
         <Accordion.Content className="accordion-content">
           <Flex direction="column" gap="4">
-            <label className="control-label">
-              <span>Dots</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={100}
-                  max={2000}
-                  step={10}
-                  value={controls.count}
-                  onValueChange={(value) => onControlChange("count", value)}
-                />
-                <Text className="value">{controls.count}</Text>
-              </Flex>
-            </label>
-            <label className="control-label">
-              <span>Min size</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={2}
-                  max={10}
-                  step={1}
-                  value={controls.minSize}
-                  onValueChange={(value) => onControlChange("minSize", value)}
-                />
-                <Text className="value">{controls.minSize}</Text>
-              </Flex>
-            </label>
-            <label className="control-label">
-              <span>Max size</span>
-              <Flex gap="2" align="center">
-                <SliderInput
-                  min={4}
-                  max={20}
-                  step={1}
-                  value={controls.maxSize}
-                  onValueChange={(value) => onControlChange("maxSize", value)}
-                />
-                <Text className="value">{controls.maxSize}</Text>
-              </Flex>
-            </label>
+            <Box>
+              <Text as="div" size="2" mb="2">Mode</Text>
+              <Select.Root
+                value={mode}
+                onValueChange={(value) => onControlChange('mode', value)}
+              >
+                <Select.Trigger />
+                <Select.Content>
+                  <Select.Item value="battle">Battle</Select.Item>
+                  <Select.Item value="simulation">Simulation</Select.Item>
+                </Select.Content>
+              </Select.Root>
+            </Box>
+            
+            <SharedSetupSettings
+              controls={controls}
+              onControlChange={onControlChange as any}
+            />
           </Flex>
         </Accordion.Content>
       </Accordion.Item>
+
 
       <Accordion.Item value="palette">
         <Accordion.Trigger className="accordion-trigger">

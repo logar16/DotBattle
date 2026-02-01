@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import "./App.css";
 import { Simulation } from "./sim/simulation";
-import type { SimControls } from "./sim/types";
+import type { NewSimControls } from "./sim/types";
 import type { Favorite } from "./types";
 import {
   normalizeHex,
@@ -95,7 +95,8 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [, setMenuDotActive] = useState(false);
   const [menuSize, setMenuSize] = useState(0);
-  const [controls, setControls] = useState<SimControls>({
+  const [controls, setControls] = useState<NewSimControls>({
+    mode: 'battle' as const,
     count: 500,
     speed: 60,
     minSize: 2,
@@ -104,14 +105,10 @@ function App() {
     magnetStrength: 80,
     mouseAttraction: 0,
     mouseRange: 150,
-    repelAll: false,
   });
 
-  const updateControl = <K extends keyof SimControls>(
-    key: K,
-    value: SimControls[K],
-  ) => {
-    setControls((prev) => ({ ...prev, [key]: value }));
+  const updateControl = (key: string, value: any) => {
+    setControls((prev: any) => ({ ...prev, [key]: value }));
   };
 
   const handleAddColor = () => setPalette((prev) => [...prev, "#ffffff"]);
@@ -131,8 +128,7 @@ function App() {
   };
   const handleReset = () => setPalette([...basePalette]);
   const handleRestart = () => {
-    simRef.current?.setControls(controls);
-    simRef.current?.start();
+    simRef.current?.restart();
   };
 
   const handleCopyPalette = async () => {
@@ -214,22 +210,6 @@ function App() {
     if (!loaded.length) return;
     setPalette(loaded);
     setPaletteInput("");
-  };
-
-  const handleFactionClick = (faction: number, shiftKey: boolean) => {
-    if (shiftKey) {
-      simRef.current?.setAllToFaction(faction);
-    } else {
-      simRef.current?.addDotsForFaction(faction);
-    }
-  };
-
-  const handleFactionContextMenu = (faction: number, shiftKey: boolean) => {
-    if (shiftKey) {
-      simRef.current?.removeFactionDots(faction);
-    } else {
-      simRef.current?.removeFactionDots(faction, 50);
-    }
   };
 
   useEffect(() => {
@@ -399,17 +379,35 @@ function App() {
             onAddDotsForFaction={(index) =>
               simRef.current?.addDotsForFaction(index)
             }
+            onRemoveFactionDots={(faction, count) =>
+              simRef.current?.removeFactionDots(faction, count)
+            }
+            onSetAllToFaction={(faction) =>
+              simRef.current?.setAllToFaction(faction)
+            }
           />
         </aside>
 
         <main className="main" ref={mainRef}>
           <StatsPanel
-            factions={statsFactions}
-            total={statsTotal}
-            fps={statsFps}
-            palette={palette}
-            onFactionClick={handleFactionClick}
-            onFactionContextMenu={handleFactionContextMenu}
+            mode={controls.mode}
+            stats={
+              controls.mode === 'simulation'
+                ? {
+                    totalDots: statsTotal,
+                    fps: statsFps,
+                    avgVelocity: 0
+                  }
+                : {
+                    factions: statsFactions.map((count, index) => ({
+                      count,
+                      color: palette[index] || "#111827",
+                      percentage: statsTotal > 0 ? (count / statsTotal) * 100 : 0
+                    })),
+                    totalDots: statsTotal,
+                    fps: statsFps
+                  }
+            }
           />
           <ContextMenu.Root
             onOpenChange={(open) => {

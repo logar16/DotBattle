@@ -1,0 +1,43 @@
+.battle-stats-container {
+  min-width: 0 !important;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.battle-stats-container > * {
+  min-width: 0 !important;
+}
+
+.faction-composition-bar {
+  display: flex;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  height: 12px;
+  background: var(--gray-4);
+  border-radius: 6px;
+  overflow: hidden;
+  min-width: 0 !important;
+}
+
+.faction-percentages {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.faction-segment {
+  height: 100%;
+  background: var(--segment-color);
+  transition: width 0.3s ease;
+  flex-shrink: 0;
+  min-width: 1px;
+  max-width: 100%;
+}

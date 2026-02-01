@@ -7,9 +7,12 @@
   gap: 6px 12px;
   align-items: center;
   flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.stats div {
+/* Legacy styles - only apply to direct stat items, not nested components */
+.stats > div:not(.battle-stats-container):not(.simulation-stats-container) {
   min-width: 132px;
   font-size: 13px;
   display: inline-flex;
