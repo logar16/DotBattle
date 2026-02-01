@@ -16,7 +16,6 @@ import type { NewSimControls } from "./sim/types";
 import type { Favorite } from "./types";
 import {
   normalizeHex,
-  parsePaletteInput,
   randomizePalette,
 } from "./utils/palette";
 import {
@@ -25,27 +24,56 @@ import {
 } from "./components/SettingsPanel";
 import { StatsPanel } from "./components/StatsPanel";
 
-const defaultPalette = [
-  "#dc143c",
-  "#ff7a00",
-  "#ffff00",
-  "#7fff00",
-  "#00ffff",
-  "#0000ff",
-  "#7b1fa2",
-  "#ffffff",
+const defaultPresets: Favorite[] = [
+  {
+    name: "Syntax Highlights",
+    colors: ["#39a8cb", "#4d5eac", "#ae42e4", "#dd1e74", "#f09f66", "#a8e278", "#34e5a1"]
+  },
+  {
+    name: "Default",
+    colors: ["#dc143c", "#ff7a00", "#ffff00", "#7fff00", "#00ffff", "#0000ff", "#7b1fa2", "#ffffff"]
+  },
+  {
+    name: "Mints",
+    colors: ["#92dce5", "#d38dcd", "#c39bee", "#5897e4", "#a67de3"]
+  },
+  {
+    name: "Firesky",
+    colors: ["#3e9ec1", "#face68", "#f79845", "#fa6868"]
+  },
+  {
+    name: "Ladybug",
+    colors: ["#78c841", "#b4e50d", "#ff9b2f", "#df4343", "#ffea00"]
+  },
+  {
+    name: "Ocean",
+    colors: ["#4319b8", "#1961cc", "#00b8e6", "#00ffee", "#00faa7"]
+  },
+  {
+    name: "Jungle",
+    colors: ["#73ec8b", "#54c392", "#abe7b2", "#6ac8b5", "#15b392", "#6dc355"]
+  }
 ];
 
 const favoritesStorageKey = "dotbattle.paletteFavorites";
+const favoritesInitializedKey = "dotbattle.paletteFavorites.initialized";
 
 function getFavorites(): Favorite[] {
   try {
+    // On first load, initialize with default presets
+    const initialized = localStorage.getItem(favoritesInitializedKey);
+    if (!initialized) {
+      localStorage.setItem(favoritesStorageKey, JSON.stringify(defaultPresets));
+      localStorage.setItem(favoritesInitializedKey, "true");
+      return [...defaultPresets];
+    }
+    
     const stored = JSON.parse(
       localStorage.getItem(favoritesStorageKey) || "[]",
     );
     return Array.isArray(stored) ? stored : [];
   } catch {
-    return [];
+    return [...defaultPresets];
   }
 }
 
@@ -66,21 +94,28 @@ function App() {
     });
   }, []);
 
-  const [palette, setPalette] = useState<string[]>(() => {
-    const storedFavorites = getFavorites();
-    if (storedFavorites.length > 0) {
-      const randomIndex = Math.floor(Math.random() * storedFavorites.length);
-      return storedFavorites[randomIndex].colors;
+  const [favorites, setFavorites] = useState<Favorite[]>(() => getFavorites());
+  
+  // Pick a random preset once for both currentPreset and palette
+  const initialPreset = (() => {
+    const allFavorites = getFavorites();
+    if (allFavorites.length > 0) {
+      const randomIndex = Math.floor(Math.random() * allFavorites.length);
+      return allFavorites[randomIndex];
     }
-    return [...defaultPalette];
-  });
+    return null;
+  })();
+  
+  const [currentPreset, setCurrentPreset] = useState<string>(
+    initialPreset?.name || "[Custom]"
+  );
+  const [palette, setPalette] = useState<string[]>(
+    initialPreset?.colors || defaultPresets[0].colors
+  );
   const [basePalette, setBasePalette] = useState<string[]>(palette);
   const paletteRef = useRef<string[]>(palette);
-  const [favorites, setFavorites] = useState<Favorite[]>(() => getFavorites());
   const [favoriteName, setFavoriteName] = useState("");
   const [favoritesImport, setFavoritesImport] = useState("");
-  const [paletteInput, setPaletteInput] = useState("");
-  const [selectedFavorite, setSelectedFavorite] = useState("0");
   const paletteColors = useMemo(() => palette, [palette]);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const stored = localStorage.getItem("dotbattle.theme");
@@ -107,8 +142,8 @@ function App() {
     mouseRange: 150,
   });
 
-  const updateControl = (key: string, value: any) => {
-    setControls((prev: any) => ({ ...prev, [key]: value }));
+  const updateControl = (key: string, value: number | boolean | string) => {
+    setControls((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleAddColor = () => setPalette((prev) => [...prev, "#ffffff"]);
@@ -136,17 +171,32 @@ function App() {
     try {
       await navigator.clipboard.writeText(json);
     } catch {
-      setPaletteInput(json);
+      // Silently fail if clipboard not available
     }
   };
 
   const handleSaveFavorite = () => {
-    const name =
-      favoriteName.trim() || `Palette ${new Date().toLocaleString()}`;
-    const next = [...favorites, { name, colors: palette }];
+    const name = favoriteName.trim();
+    if (!name || name === "[Custom]") return;
+    
+    // Check if overwriting existing
+    const existingIndex = favorites.findIndex(f => f.name === name);
+    let next: Favorite[];
+    
+    if (existingIndex >= 0) {
+      // Overwrite existing
+      next = [...favorites];
+      next[existingIndex] = { name, colors: palette };
+    } else {
+      // Add new
+      next = [...favorites, { name, colors: palette }];
+    }
+    
     setFavorites(next);
     saveFavorites(next);
     setFavoriteName("");
+    setCurrentPreset(name); // Update current preset to the saved name
+    setBasePalette(palette);
   };
 
   const handleExportFavorites = async () => {
@@ -159,12 +209,27 @@ function App() {
   };
 
   const handleImportFavorites = () => {
-    let parsed: Favorite[] | null = null;
+    let parsed: unknown = null;
     try {
       parsed = JSON.parse(favoritesImport);
     } catch {
       return;
     }
+    
+    // Handle single palette array: ["#color1", "#color2"]
+    if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+      const colors = parsed
+        .map((color: string) => normalizeHex(String(color)))
+        .filter((c): c is string => Boolean(c));
+      if (colors.length) {
+        setPalette(colors);
+        setCurrentPreset("[Custom]");
+        setFavoritesImport("");
+      }
+      return;
+    }
+    
+    // Handle favorites array: [{name, colors}, ...]
     if (!Array.isArray(parsed)) return;
     const cleaned = parsed
       .map((entry) => {
@@ -174,42 +239,55 @@ function App() {
             : "Imported palette";
         const colors = Array.isArray(entry?.colors)
           ? entry.colors
-              .map((color) => normalizeHex(String(color)))
-              .filter(Boolean)
+              .map((color: string) => normalizeHex(String(color)))
+              .filter((c: string | null): c is string => Boolean(c))
           : [];
         if (!colors.length) return null;
         return { name, colors };
       })
       .filter(Boolean) as Favorite[];
     if (!cleaned.length) return;
-    setFavorites(cleaned);
-    saveFavorites(cleaned);
+    
+    // Merge with existing favorites
+    const merged = [...favorites];
+    for (const importedFav of cleaned) {
+      const existingIndex = merged.findIndex(f => f.name === importedFav.name);
+      if (existingIndex >= 0) {
+        merged[existingIndex] = importedFav;
+      } else {
+        merged.push(importedFav);
+      }
+    }
+    
+    setFavorites(merged);
+    saveFavorites(merged);
     setFavoritesImport("");
-    setSelectedFavorite("0");
   };
 
-  const handleLoadFavorite = () => {
-    const index = Number(selectedFavorite);
-    const selected = favorites[index];
+  const handleLoadPreset = (presetName: string) => {
+    const selected = favorites.find(f => f.name === presetName);
     if (!selected) return;
     setPalette(selected.colors);
     setBasePalette(selected.colors);
+    setCurrentPreset(presetName);
   };
 
   const handleDeleteFavorite = () => {
-    const index = Number(selectedFavorite);
-    if (!Number.isFinite(index)) return;
-    const next = favorites.filter((_, i) => i !== index);
+    if (currentPreset === "[Custom]") return;
+    
+    const next = favorites.filter(f => f.name !== currentPreset);
     setFavorites(next);
     saveFavorites(next);
-    setSelectedFavorite("0");
-  };
-
-  const handleLoadPalette = () => {
-    const loaded = parsePaletteInput(paletteInput);
-    if (!loaded.length) return;
-    setPalette(loaded);
-    setPaletteInput("");
+    
+    // Switch to first available preset or [Custom]
+    if (next.length > 0) {
+      const newPreset = next[0].name;
+      setCurrentPreset(newPreset);
+      setPalette(next[0].colors);
+      setBasePalette(next[0].colors);
+    } else {
+      setCurrentPreset("[Custom]");
+    }
   };
 
   useEffect(() => {
@@ -354,8 +432,6 @@ function App() {
             controls={controls}
             onControlChange={updateControl}
             paletteColors={paletteColors}
-            paletteInput={paletteInput}
-            setPaletteInput={setPaletteInput}
             onAddColor={handleAddColor}
             onClearPalette={handleClearPalette}
             onUpdateColor={handleUpdateColor}
@@ -363,14 +439,12 @@ function App() {
             onRandomize={handleRandomize}
             onReset={handleReset}
             onCopyPalette={handleCopyPalette}
-            onLoadPalette={handleLoadPalette}
             favorites={favorites}
+            currentPreset={currentPreset}
+            onLoadPreset={handleLoadPreset}
             favoriteName={favoriteName}
             setFavoriteName={setFavoriteName}
-            selectedFavorite={selectedFavorite}
-            setSelectedFavorite={setSelectedFavorite}
             onSaveFavorite={handleSaveFavorite}
-            onLoadFavorite={handleLoadFavorite}
             onDeleteFavorite={handleDeleteFavorite}
             onExportFavorites={handleExportFavorites}
             favoritesImport={favoritesImport}

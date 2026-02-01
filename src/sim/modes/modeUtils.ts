@@ -15,11 +15,13 @@ export function spawnDot(
   height: number
 ): Dot {
   const size = minSize + Math.random() * (maxSize - minSize)
+  const angle = Math.random() * Math.PI * 2
+  const speed = 0.5 + Math.random() * 1.5 // Random speed between 0.5 and 2
   return {
     x: size + Math.random() * (width - size * 2),
     y: size + Math.random() * (height - size * 2),
-    vx: 0,
-    vy: 0,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
     size,
     faction
   }

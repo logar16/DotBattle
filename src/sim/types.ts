@@ -52,7 +52,7 @@ export interface BaseMode<TControls, _TStats = never> {
 
   setMenuDot?(x: number, y: number): Dot | null
   clearMenuDot?(): void
-  updateMenuDot?(size: number, faction: number): void
+  updateMenuDot?(size: number | undefined, faction: number | undefined): void
 }
 
 export type BattleControls = {

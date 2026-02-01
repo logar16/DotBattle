@@ -212,7 +212,7 @@ export class SimulationMode implements BaseMode<SimulationControls, SimulationSt
     this.menuDot = null
   }
 
-  updateMenuDot(size: number, faction: number): void {
+  updateMenuDot(size: number | undefined, faction: number | undefined): void {
     if (!this.menuDot) return
     if (size !== undefined) this.menuDot.size = size
     if (faction !== undefined) this.menuDot.faction = faction

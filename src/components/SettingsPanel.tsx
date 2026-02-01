@@ -14,7 +14,7 @@ import {
   ChevronDown,
   Copy,
   Download,
-  FolderOpen,
+  Eraser,
   Plus,
   RefreshCw,
   Save,
@@ -22,7 +22,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import type { NewSimControls } from "../sim/types";
+import type { NewSimControls, BattleControls, SimulationControls } from "../sim/types";
 import type { Favorite } from "../types";
 import { SliderInput } from "./SliderInput";
 import { SharedSetupSettings } from "./SharedSetupSettings";
@@ -31,10 +31,8 @@ import { SimulationSettings } from "./SimulationSettings";
 
 type SettingsPanelProps = {
   controls: NewSimControls;
-  onControlChange: (key: string, value: any) => void;
+  onControlChange: (key: string, value: number | boolean | string) => void;
   paletteColors: string[];
-  paletteInput: string;
-  setPaletteInput: (value: string) => void;
   onAddColor: () => void;
   onUpdateColor: (index: number, value: string) => void;
   onRemoveColor: (index: number) => void;
@@ -42,14 +40,12 @@ type SettingsPanelProps = {
   onRandomize: () => void;
   onReset: () => void;
   onCopyPalette: () => void;
-  onLoadPalette: () => void;
   favorites: Favorite[];
+  currentPreset: string;
+  onLoadPreset: (presetName: string) => void;
   favoriteName: string;
   setFavoriteName: (value: string) => void;
-  selectedFavorite: string;
-  setSelectedFavorite: (value: string) => void;
   onSaveFavorite: () => void;
-  onLoadFavorite: () => void;
   onDeleteFavorite: () => void;
   onExportFavorites: () => void;
   favoritesImport: string;
@@ -84,8 +80,6 @@ export function SettingsPanel({
   controls,
   onControlChange,
   paletteColors,
-  paletteInput,
-  setPaletteInput,
   onAddColor,
   onUpdateColor,
   onRemoveColor,
@@ -93,14 +87,12 @@ export function SettingsPanel({
   onRandomize,
   onReset,
   onCopyPalette,
-  onLoadPalette,
   favorites,
+  currentPreset,
+  onLoadPreset,
   favoriteName,
   setFavoriteName,
-  selectedFavorite,
-  setSelectedFavorite,
   onSaveFavorite,
-  onLoadFavorite,
   onDeleteFavorite,
   onExportFavorites,
   favoritesImport,
@@ -130,9 +122,9 @@ export function SettingsPanel({
         <Accordion.Content className="accordion-content">
           {mode === "battle" && (
             <BattleSettings
-              controls={controls as any}
+              controls={controls as BattleControls}
               palette={paletteColors}
-              onControlChange={onControlChange as any}
+              onControlChange={onControlChange}
               onAddDotsForFaction={onAddDotsForFaction}
               onRemoveFactionDots={onRemoveFactionDots}
               onSetAllToFaction={onSetAllToFaction}
@@ -140,8 +132,8 @@ export function SettingsPanel({
           )}
           {mode === "simulation" && (
             <SimulationSettings
-              controls={controls as any}
-              onControlChange={onControlChange as any}
+              controls={controls as SimulationControls}
+              onControlChange={onControlChange}
             />
           )}
         </Accordion.Content>
@@ -174,7 +166,7 @@ export function SettingsPanel({
             
             <SharedSetupSettings
               controls={controls}
-              onControlChange={onControlChange as any}
+              onControlChange={onControlChange}
             />
           </Flex>
         </Accordion.Content>
@@ -193,6 +185,40 @@ export function SettingsPanel({
         <Accordion.Content className="accordion-content">
           <Flex direction="column" gap="4">
             <Box className="palette-editor">
+              <Box>
+                <Text
+                  as="div"
+                  size="1"
+                  mb="2"
+                  weight="medium"
+                  style={{
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    opacity: 0.6,
+                  }}
+                >
+                  Presets
+                </Text>
+                <Select.Root
+                  value={currentPreset}
+                  onValueChange={onLoadPreset}
+                >
+                  <Select.Trigger />
+                  <Select.Content position="popper">
+                    {currentPreset === "[Custom]" && (
+                      <Select.Item value="[Custom]" disabled>
+                        [Custom]
+                      </Select.Item>
+                    )}
+                    {favorites.map((fav) => (
+                      <Select.Item value={fav.name} key={fav.name}>
+                        {fav.name}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+              </Box>
+
               <Box className="palette-actions-group">
                 <Text
                   size="1"
@@ -218,7 +244,7 @@ export function SettingsPanel({
                     title="Clear palette"
                     onClick={onClearPalette}
                   >
-                    <Trash2 size={16} />
+                    <Eraser size={16} />
                   </Button>
                   <Button
                     variant="surface"
@@ -243,31 +269,70 @@ export function SettingsPanel({
                   </Button>
                   <Dialog.Root>
                     <Dialog.Trigger>
-                      <Button variant="surface" title="Import pallete">
-                        <Download size={16} />
+                      <Button variant="surface" title="Save preset">
+                        <Save size={16} />
                       </Button>
                     </Dialog.Trigger>
                     <Dialog.Content maxWidth="450px">
-                      <Dialog.Title>Import palette</Dialog.Title>
-                      <TextArea
-                        value={paletteInput}
-                        onChange={(event) =>
-                          setPaletteInput(event.target.value)
-                        }
-                        placeholder='["#ff0000", "#00ff00"]'
+                      <Dialog.Title>Save preset</Dialog.Title>
+                      <Dialog.Description size="2" mb="3">
+                        {currentPreset === "[Custom]" 
+                          ? "Enter a name for this preset"
+                          : `Saving as "${currentPreset}" will overwrite the existing preset. Change the name to create a new one.`}
+                      </Dialog.Description>
+                      <TextField.Root
+                        value={favoriteName}
+                        onChange={(
+                          event: React.ChangeEvent<HTMLInputElement>,
+                        ) => setFavoriteName(event.target.value)}
+                        placeholder={currentPreset === "[Custom]" ? "My Palette" : currentPreset}
+                        onFocus={() => {
+                          if (currentPreset !== "[Custom]" && !favoriteName) {
+                            setFavoriteName(currentPreset);
+                          }
+                        }}
                       />
                       <Flex gap="2" justify="end" mt="3">
                         <Dialog.Close>
                           <Button variant="soft">Cancel</Button>
                         </Dialog.Close>
                         <Dialog.Close>
-                          <Button onClick={onLoadPalette}>Import</Button>
+                          <Button onClick={onSaveFavorite}>Save</Button>
+                        </Dialog.Close>
+                      </Flex>
+                    </Dialog.Content>
+                  </Dialog.Root>
+                  <Dialog.Root>
+                    <Dialog.Trigger>
+                      <Button
+                        variant="surface"
+                        color="crimson"
+                        title="Delete current preset"
+                        disabled={currentPreset === "[Custom]"}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content maxWidth="450px">
+                      <Dialog.Title>Delete preset</Dialog.Title>
+                      <Dialog.Description size="2" mb="3">
+                        Are you sure you want to delete "{currentPreset}"? This cannot be undone.
+                      </Dialog.Description>
+                      <Flex gap="2" justify="end" mt="3">
+                        <Dialog.Close>
+                          <Button variant="surface">Cancel</Button>
+                        </Dialog.Close>
+                        <Dialog.Close>
+                          <Button color="crimson" onClick={onDeleteFavorite}>
+                            Delete
+                          </Button>
                         </Dialog.Close>
                       </Flex>
                     </Dialog.Content>
                   </Dialog.Root>
                 </Flex>
               </Box>
+
               <Flex direction="column" gap="2">
                 {paletteColors.map((color, index) => (
                   <Flex gap="2" align="center" key={index}>
@@ -306,117 +371,21 @@ export function SettingsPanel({
               </Flex>
 
               <Flex direction="column" gap="2" mt="3">
-                <Flex gap="2" wrap="wrap">
-                  <Dialog.Root>
-                    <Dialog.Trigger>
-                      <Button variant="surface" title="Save favorite">
-                        <Save size={16} />
-                        <span>Save</span>
-                      </Button>
-                    </Dialog.Trigger>
-                    <Dialog.Content maxWidth="450px">
-                      <Dialog.Title>Save favorite</Dialog.Title>
-                      <TextField.Root
-                        value={favoriteName}
-                        onChange={(
-                          event: React.ChangeEvent<HTMLInputElement>,
-                        ) => setFavoriteName(event.target.value)}
-                        placeholder="My palette"
-                      />
-                      <Flex gap="2" justify="end" mt="3">
-                        <Dialog.Close>
-                          <Button variant="soft">Cancel</Button>
-                        </Dialog.Close>
-                        <Dialog.Close>
-                          <Button onClick={onSaveFavorite}>Save</Button>
-                        </Dialog.Close>
-                      </Flex>
-                    </Dialog.Content>
-                  </Dialog.Root>
-
-                  <Dialog.Root>
-                    <Dialog.Trigger>
-                      <Button variant="surface" title="Load favorite">
-                        <FolderOpen size={16} />
-                        <span>Load</span>
-                      </Button>
-                    </Dialog.Trigger>
-                    <Dialog.Content maxWidth="450px">
-                      <Dialog.Title>Load favorite</Dialog.Title>
-                      <Select.Root
-                        value={selectedFavorite}
-                        onValueChange={setSelectedFavorite}
-                      >
-                        <Select.Trigger />
-                        <Select.Content position="popper">
-                          {favorites.map((fav, index) => (
-                            <Select.Item
-                              value={String(index)}
-                              key={fav.name + index}
-                            >
-                              {fav.name}
-                            </Select.Item>
-                          ))}
-                        </Select.Content>
-                      </Select.Root>
-                      <Flex gap="2" justify="end" mt="3">
-                        <Dialog.Close>
-                          <Button variant="soft">Cancel</Button>
-                        </Dialog.Close>
-                        <Dialog.Close>
-                          <Button onClick={onLoadFavorite}>Load</Button>
-                        </Dialog.Close>
-                      </Flex>
-                    </Dialog.Content>
-                  </Dialog.Root>
-
-                  <Dialog.Root>
-                    <Dialog.Trigger>
-                      <Button
-                        variant="surface"
-                        color="crimson"
-                        title="Delete favorite"
-                      >
-                        <Trash2 size={16} />
-                        <span>Delete</span>
-                      </Button>
-                    </Dialog.Trigger>
-                    <Dialog.Content maxWidth="450px">
-                      <Dialog.Title>Delete favorite</Dialog.Title>
-                      <Select.Root
-                        value={selectedFavorite}
-                        onValueChange={setSelectedFavorite}
-                      >
-                        <Select.Trigger />
-                        <Select.Content position="popper">
-                          {favorites.map((fav, index) => (
-                            <Select.Item
-                              value={String(index)}
-                              key={fav.name + index}
-                            >
-                              {fav.name}
-                            </Select.Item>
-                          ))}
-                        </Select.Content>
-                      </Select.Root>
-                      <Flex gap="2" justify="end" mt="3">
-                        <Dialog.Close>
-                          <Button variant="surface">Cancel</Button>
-                        </Dialog.Close>
-                        <Dialog.Close>
-                          <Button color="crimson" onClick={onDeleteFavorite}>
-                            Delete
-                          </Button>
-                        </Dialog.Close>
-                      </Flex>
-                    </Dialog.Content>
-                  </Dialog.Root>
-                </Flex>
-
+                <Text
+                  size="1"
+                  weight="medium"
+                  style={{
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    opacity: 0.6,
+                  }}
+                >
+                  Import / Export
+                </Text>
                 <Flex gap="2" wrap="wrap">
                   <Button
                     variant="surface"
-                    title="Export favorites JSON"
+                    title="Export presets JSON"
                     onClick={onExportFavorites}
                   >
                     <Upload size={16} />
@@ -425,19 +394,23 @@ export function SettingsPanel({
 
                   <Dialog.Root>
                     <Dialog.Trigger>
-                      <Button variant="surface" title="Import favorites JSON">
+                      <Button variant="surface" title="Import palette or presets">
                         <Download size={16} />
                         <span>Import</span>
                       </Button>
                     </Dialog.Trigger>
                     <Dialog.Content maxWidth="450px">
-                      <Dialog.Title>Import favorites</Dialog.Title>
+                      <Dialog.Title>Import</Dialog.Title>
+                      <Dialog.Description size="2" mb="3">
+                        Paste a color array or presets JSON
+                      </Dialog.Description>
                       <TextArea
                         value={favoritesImport}
                         onChange={(event) =>
                           setFavoritesImport(event.target.value)
                         }
-                        placeholder='[{"name":"Palette 1","colors":["#ff0000","#00ff00"]}]'
+                        placeholder='["#ff0000", "#00ff00"] or [{"name":"Palette","colors":[...]}]'
+                        rows={6}
                       />
                       <Flex gap="2" justify="end" mt="3">
                         <Dialog.Close>

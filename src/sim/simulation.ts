@@ -204,12 +204,12 @@ export class Simulation {
   }
 
   updateMenuDotSize(size: number) {
-    this.currentMode.updateMenuDot?.(size, undefined as any)
+    this.currentMode.updateMenuDot?.(size, undefined)
     this.needsRender = true
   }
 
   updateMenuDotFaction(faction: number) {
-    this.currentMode.updateMenuDot?.(undefined as any, faction)
+    this.currentMode.updateMenuDot?.(undefined, faction)
     this.needsRender = true
   }
 
