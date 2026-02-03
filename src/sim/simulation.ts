@@ -218,11 +218,11 @@ export class Simulation {
     this.needsRender = true
   }
 
-  addDotsForFaction(faction: number) {
+  addDotsForFaction(faction: number, count = 50) {
     const { minSize, maxSize } = this.controls
     const rect = this.canvas.getBoundingClientRect()
     
-    addDotsForFaction(this.currentMode.dots, faction, 50, () => {
+    addDotsForFaction(this.currentMode.dots, faction, count, () => {
       return spawnDot(faction, minSize, maxSize, rect.width, rect.height)
     })
     

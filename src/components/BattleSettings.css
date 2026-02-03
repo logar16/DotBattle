@@ -1,11 +1,30 @@
-.faction-button {
-  background: var(--faction-color);
-  min-width: 40px;
-  font-weight: 600;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+.faction-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.faction-button:hover {
-  opacity: 0.9;
+.faction-row {
+  display: grid;
+  grid-template-columns: 28px 34px 34px 34px 34px;
+  align-items: center;
+  gap: 8px;
+}
+
+.faction-row .faction-action {
+  border-color: var(--faction-color);
+}
+
+.faction-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--faction-color);
+  border: 1px solid var(--gray-6);
+  box-shadow: var(--shadow-1);
+}
+
+.faction-action {
+  width: 100%;
+  justify-content: center;
 }

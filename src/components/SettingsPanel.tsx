@@ -51,7 +51,7 @@ type SettingsPanelProps = {
   favoritesImport: string;
   setFavoritesImport: (value: string) => void;
   onImportFavorites: () => void;
-  onAddDotsForFaction: (index: number) => void;
+  onAddDotsForFaction: (index: number, count?: number) => void;
   onRemoveFactionDots: (faction: number, count?: number) => void;
   onSetAllToFaction: (faction: number) => void;
 };

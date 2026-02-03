@@ -450,8 +450,8 @@ function App() {
             favoritesImport={favoritesImport}
             setFavoritesImport={setFavoritesImport}
             onImportFavorites={handleImportFavorites}
-            onAddDotsForFaction={(index) =>
-              simRef.current?.addDotsForFaction(index)
+            onAddDotsForFaction={(index, count) =>
+              simRef.current?.addDotsForFaction(index, count)
             }
             onRemoveFactionDots={(faction, count) =>
               simRef.current?.removeFactionDots(faction, count)
