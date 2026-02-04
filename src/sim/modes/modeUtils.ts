@@ -44,7 +44,7 @@ export function handleMouseForces(
 
     if (distSq < rangeSq && distSq > 0) {
       const dist = Math.sqrt(distSq)
-      const force = attraction * (1 - dist / range) * 0.5
+      const force = attraction * (1 - dist / range) * 5.0
       const fx = (dx / dist) * force
       const fy = (dy / dist) * force
 

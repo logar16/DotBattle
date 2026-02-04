@@ -23,7 +23,8 @@ export class Renderer {
     const height = this.canvas.height / window.devicePixelRatio
     const padding = this.arenaPadding
 
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    // Clear using CSS pixel dimensions (context is scaled by devicePixelRatio)
+    this.ctx.clearRect(0, 0, width, height)
 
     if (options.showArena) {
       this.ctx.strokeStyle = '#1f2937'
@@ -61,10 +62,12 @@ export class Renderer {
   resizeCanvas(): void {
     const dpr = window.devicePixelRatio || 1
     const rect = this.canvas.getBoundingClientRect()
-    
+
     this.canvas.width = rect.width * dpr
     this.canvas.height = rect.height * dpr
-    
+
+    // Reset transformation matrix before scaling to prevent cumulative scaling
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0)
     this.ctx.scale(dpr, dpr)
   }
 }

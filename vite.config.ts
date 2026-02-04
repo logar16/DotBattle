@@ -7,5 +7,6 @@ export default defineConfig({
   base: '/DotBattle/',
   server: {
     port: 6416,
+    host: true, // Listen on all network interfaces for LAN access
   },
 })

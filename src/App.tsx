@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import * as ContextMenu from "@radix-ui/react-context-menu";
-import { Button, Theme } from "@radix-ui/themes";
+import { Button } from "@radix-ui/themes";
 import {
   Maximize2,
   Moon,
@@ -14,10 +14,7 @@ import "./App.css";
 import { Simulation } from "./sim/simulation";
 import type { NewSimControls } from "./sim/types";
 import type { Favorite } from "./types";
-import {
-  normalizeHex,
-  randomizePalette,
-} from "./utils/palette";
+import { normalizeHex, randomizePalette } from "./utils/palette";
 import {
   SettingsPanel,
   ContextMenuSizeSlider,
@@ -27,32 +24,49 @@ import { StatsPanel } from "./components/StatsPanel";
 const defaultPresets: Favorite[] = [
   {
     name: "Syntax Highlights",
-    colors: ["#39a8cb", "#4d5eac", "#ae42e4", "#dd1e74", "#f09f66", "#a8e278", "#34e5a1"]
+    colors: [
+      "#39a8cb",
+      "#4d5eac",
+      "#ae42e4",
+      "#dd1e74",
+      "#f09f66",
+      "#a8e278",
+      "#34e5a1",
+    ],
   },
   {
     name: "Default",
-    colors: ["#dc143c", "#ff7a00", "#ffff00", "#7fff00", "#00ffff", "#0000ff", "#7b1fa2", "#ffffff"]
+    colors: [
+      "#dc143c",
+      "#ff7a00",
+      "#ffff00",
+      "#7fff00",
+      "#00ffff",
+      "#0000ff",
+      "#7b1fa2",
+      "#ffffff",
+    ],
   },
   {
     name: "Mints",
-    colors: ["#92dce5", "#d38dcd", "#c39bee", "#5897e4", "#a67de3"]
+    colors: ["#92dce5", "#d38dcd", "#c39bee", "#5897e4", "#a67de3"],
   },
   {
     name: "Firesky",
-    colors: ["#3e9ec1", "#face68", "#f79845", "#fa6868"]
+    colors: ["#3e9ec1", "#face68", "#f79845", "#fa6868"],
   },
   {
     name: "Ladybug",
-    colors: ["#78c841", "#b4e50d", "#ff9b2f", "#df4343", "#ffea00"]
+    colors: ["#78c841", "#b4e50d", "#ff9b2f", "#df4343", "#ffea00"],
   },
   {
     name: "Ocean",
-    colors: ["#4319b8", "#1961cc", "#00b8e6", "#00ffee", "#00faa7"]
+    colors: ["#4319b8", "#1961cc", "#00b8e6", "#00ffee", "#00faa7"],
   },
   {
     name: "Jungle",
-    colors: ["#73ec8b", "#54c392", "#abe7b2", "#6ac8b5", "#15b392", "#6dc355"]
-  }
+    colors: ["#73ec8b", "#54c392", "#abe7b2", "#6ac8b5", "#15b392", "#6dc355"],
+  },
 ];
 
 const favoritesStorageKey = "dotbattle.paletteFavorites";
@@ -67,7 +81,7 @@ function getFavorites(): Favorite[] {
       localStorage.setItem(favoritesInitializedKey, "true");
       return [...defaultPresets];
     }
-    
+
     const stored = JSON.parse(
       localStorage.getItem(favoritesStorageKey) || "[]",
     );
@@ -81,9 +95,15 @@ function saveFavorites(favorites: Favorite[]) {
   localStorage.setItem(favoritesStorageKey, JSON.stringify(favorites));
 }
 
-function App() {
+type AppProps = {
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
+};
+
+function App({ theme, onToggleTheme }: AppProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
+  const portalContainerRef = useRef<HTMLDivElement | null>(null);
   const simRef = useRef<Simulation | null>(null);
   const scheduleResize = useCallback(() => {
     requestAnimationFrame(() => {
@@ -95,7 +115,7 @@ function App() {
   }, []);
 
   const [favorites, setFavorites] = useState<Favorite[]>(() => getFavorites());
-  
+
   // Pick a random preset once for both currentPreset and palette
   const initialPreset = (() => {
     const allFavorites = getFavorites();
@@ -105,22 +125,18 @@ function App() {
     }
     return null;
   })();
-  
+
   const [currentPreset, setCurrentPreset] = useState<string>(
-    initialPreset?.name || "[Custom]"
+    initialPreset?.name || "[Custom]",
   );
   const [palette, setPalette] = useState<string[]>(
-    initialPreset?.colors || defaultPresets[0].colors
+    initialPreset?.colors || defaultPresets[0].colors,
   );
   const [basePalette, setBasePalette] = useState<string[]>(palette);
   const paletteRef = useRef<string[]>(palette);
   const [favoriteName, setFavoriteName] = useState("");
   const [favoritesImport, setFavoritesImport] = useState("");
   const paletteColors = useMemo(() => palette, [palette]);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const stored = localStorage.getItem("dotbattle.theme");
-    return stored === "light" || stored === "dark" ? stored : "dark";
-  });
 
   const [statsFactions, setStatsFactions] = useState<number[]>([]);
   const [statsTotal, setStatsTotal] = useState(0);
@@ -131,7 +147,7 @@ function App() {
   const [, setMenuDotActive] = useState(false);
   const [menuSize, setMenuSize] = useState(0);
   const [controls, setControls] = useState<NewSimControls>({
-    mode: 'battle' as const,
+    mode: "battle" as const,
     count: 500,
     speed: 60,
     minSize: 2,
@@ -178,11 +194,11 @@ function App() {
   const handleSaveFavorite = () => {
     const name = favoriteName.trim();
     if (!name || name === "[Custom]") return;
-    
+
     // Check if overwriting existing
-    const existingIndex = favorites.findIndex(f => f.name === name);
+    const existingIndex = favorites.findIndex((f) => f.name === name);
     let next: Favorite[];
-    
+
     if (existingIndex >= 0) {
       // Overwrite existing
       next = [...favorites];
@@ -191,7 +207,7 @@ function App() {
       // Add new
       next = [...favorites, { name, colors: palette }];
     }
-    
+
     setFavorites(next);
     saveFavorites(next);
     setFavoriteName("");
@@ -215,9 +231,13 @@ function App() {
     } catch {
       return;
     }
-    
+
     // Handle single palette array: ["#color1", "#color2"]
-    if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+    if (
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      typeof parsed[0] === "string"
+    ) {
       const colors = parsed
         .map((color: string) => normalizeHex(String(color)))
         .filter((c): c is string => Boolean(c));
@@ -228,7 +248,7 @@ function App() {
       }
       return;
     }
-    
+
     // Handle favorites array: [{name, colors}, ...]
     if (!Array.isArray(parsed)) return;
     const cleaned = parsed
@@ -247,25 +267,27 @@ function App() {
       })
       .filter(Boolean) as Favorite[];
     if (!cleaned.length) return;
-    
+
     // Merge with existing favorites
     const merged = [...favorites];
     for (const importedFav of cleaned) {
-      const existingIndex = merged.findIndex(f => f.name === importedFav.name);
+      const existingIndex = merged.findIndex(
+        (f) => f.name === importedFav.name,
+      );
       if (existingIndex >= 0) {
         merged[existingIndex] = importedFav;
       } else {
         merged.push(importedFav);
       }
     }
-    
+
     setFavorites(merged);
     saveFavorites(merged);
     setFavoritesImport("");
   };
 
   const handleLoadPreset = (presetName: string) => {
-    const selected = favorites.find(f => f.name === presetName);
+    const selected = favorites.find((f) => f.name === presetName);
     if (!selected) return;
     setPalette(selected.colors);
     setBasePalette(selected.colors);
@@ -274,11 +296,11 @@ function App() {
 
   const handleDeleteFavorite = () => {
     if (currentPreset === "[Custom]") return;
-    
-    const next = favorites.filter(f => f.name !== currentPreset);
+
+    const next = favorites.filter((f) => f.name !== currentPreset);
     setFavorites(next);
     saveFavorites(next);
-    
+
     // Switch to first available preset or [Custom]
     if (next.length > 0) {
       const newPreset = next[0].name;
@@ -350,230 +372,213 @@ function App() {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === "light" ? "dark" : "light";
-      localStorage.setItem("dotbattle.theme", next);
-      return next;
-    });
-  };
-
   return (
-    <Theme
-      appearance={theme}
-      accentColor="blue"
-      grayColor="slate"
-      radius="medium"
-      scaling="95%"
+    <div
+      ref={portalContainerRef}
+      className={`app${controlsCollapsed ? " controls-collapsed" : ""}${isFullscreen ? " fullscreen" : ""}`}
     >
-      <div
-        className={`app${controlsCollapsed ? " controls-collapsed" : ""}${isFullscreen ? " fullscreen" : ""}`}
-      >
-        <aside className="controls">
-          <div className="control-bar">
-            <Button
-              type="button"
-              variant="solid"
-              size="2"
-              title="Settings"
-              aria-expanded={!controlsCollapsed}
-              onClick={() => {
-                setControlsCollapsed((prev) => !prev);
-                scheduleResize();
-              }}
-            >
-              <Settings size={18} />
-            </Button>
-            <Button
-              variant="solid"
-              size="2"
-              title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-              onClick={toggleTheme}
-            >
-              {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-            </Button>
-            <Button
-              variant="solid"
-              size="2"
-              title="Restart"
-              onClick={handleRestart}
-            >
-              <RefreshCw size={18} />
-            </Button>
-            <Button
-              variant="solid"
-              size="2"
-              title={paused ? "Resume" : "Pause"}
-              onClick={() => {
-                const next = !paused;
-                setPaused(next);
-                simRef.current?.setPaused(next);
-              }}
-            >
-              {paused ? <Play size={18} /> : <Pause size={18} />}
-            </Button>
-            <Button
-              variant="solid"
-              size="2"
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-              onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen();
-                  return;
-                }
-                mainRef.current?.requestFullscreen();
-              }}
-            >
-              <Maximize2 size={18} />
-            </Button>
-          </div>
-
-          <SettingsPanel
-            controls={controls}
-            onControlChange={updateControl}
-            paletteColors={paletteColors}
-            onAddColor={handleAddColor}
-            onClearPalette={handleClearPalette}
-            onUpdateColor={handleUpdateColor}
-            onRemoveColor={handleRemoveColor}
-            onRandomize={handleRandomize}
-            onReset={handleReset}
-            onCopyPalette={handleCopyPalette}
-            favorites={favorites}
-            currentPreset={currentPreset}
-            onLoadPreset={handleLoadPreset}
-            favoriteName={favoriteName}
-            setFavoriteName={setFavoriteName}
-            onSaveFavorite={handleSaveFavorite}
-            onDeleteFavorite={handleDeleteFavorite}
-            onExportFavorites={handleExportFavorites}
-            favoritesImport={favoritesImport}
-            setFavoritesImport={setFavoritesImport}
-            onImportFavorites={handleImportFavorites}
-            onAddDotsForFaction={(index, count) =>
-              simRef.current?.addDotsForFaction(index, count)
-            }
-            onRemoveFactionDots={(faction, count) =>
-              simRef.current?.removeFactionDots(faction, count)
-            }
-            onSetAllToFaction={(faction) =>
-              simRef.current?.setAllToFaction(faction)
-            }
-          />
-        </aside>
-
-        <main className="main" ref={mainRef}>
-          <StatsPanel
-            mode={controls.mode}
-            stats={
-              controls.mode === 'simulation'
-                ? {
-                    totalDots: statsTotal,
-                    fps: statsFps,
-                    avgVelocity: 0
-                  }
-                : {
-                    factions: statsFactions.map((count, index) => ({
-                      count,
-                      color: palette[index] || "#111827",
-                      percentage: statsTotal > 0 ? (count / statsTotal) * 100 : 0
-                    })),
-                    totalDots: statsTotal,
-                    fps: statsFps
-                  }
-            }
-          />
-          <ContextMenu.Root
-            onOpenChange={(open) => {
-              if (!open) {
-                setMenuDotActive(false);
-                simRef.current?.clearMenuDot();
-              }
+      <aside className="controls">
+        <div className="control-bar">
+          <Button
+            type="button"
+            variant="solid"
+            size="2"
+            title="Settings"
+            aria-expanded={!controlsCollapsed}
+            onClick={() => {
+              setControlsCollapsed((prev) => !prev);
+              scheduleResize();
             }}
           >
-            <ContextMenu.Trigger asChild>
-              <canvas
-                ref={canvasRef}
-                className="canvas"
-                onMouseMove={(event) => {
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  simRef.current?.handleMouseMove(
-                    event.clientX - rect.left,
-                    event.clientY - rect.top,
-                  );
-                }}
-                onMouseLeave={() => simRef.current?.handleMouseLeave()}
-                onClick={(event) => {
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  simRef.current?.handleCanvasClick(
-                    event.clientX - rect.left,
-                    event.clientY - rect.top,
-                    event.shiftKey,
-                  );
-                }}
-                onContextMenu={(event) => {
-                  if (!paused) {
-                    event.preventDefault();
-                    setMenuDotActive(false);
-                    simRef.current?.clearMenuDot();
-                    return;
-                  }
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  const dot = simRef.current?.setMenuDotAt(
-                    event.clientX - rect.left,
-                    event.clientY - rect.top,
-                  );
-                  if (dot) {
-                    setMenuSize(Math.round(dot.size));
-                    setMenuDotActive(true);
-                  } else {
-                    event.preventDefault();
-                    setMenuDotActive(false);
-                    simRef.current?.clearMenuDot();
-                  }
-                }}
-              />
-            </ContextMenu.Trigger>
-            <ContextMenu.Portal>
-              <ContextMenu.Content className="context-menu-content">
-                <div className="context-menu-section">
-                  <div className="context-menu-label">Size</div>
-                  <div className="context-menu-row">
-                    <ContextMenuSizeSlider
-                      value={menuSize}
-                      onChange={(value) => {
-                        setMenuSize(value);
-                        simRef.current?.updateMenuDotSize(value);
+            <Settings size={18} />
+          </Button>
+          <Button
+            variant="solid"
+            size="2"
+            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+            onClick={onToggleTheme}
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </Button>
+          <Button
+            variant="solid"
+            size="2"
+            title="Restart"
+            onClick={handleRestart}
+          >
+            <RefreshCw size={18} />
+          </Button>
+          <Button
+            variant="solid"
+            size="2"
+            title={paused ? "Resume" : "Pause"}
+            onClick={() => {
+              const next = !paused;
+              setPaused(next);
+              simRef.current?.setPaused(next);
+            }}
+          >
+            {paused ? <Play size={18} /> : <Pause size={18} />}
+          </Button>
+          <Button
+            variant="solid"
+            size="2"
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            onClick={() => {
+              if (document.fullscreenElement) {
+                document.exitFullscreen();
+                return;
+              }
+              mainRef.current?.requestFullscreen();
+            }}
+          >
+            <Maximize2 size={18} />
+          </Button>
+        </div>
+
+        <SettingsPanel
+          controls={controls}
+          onControlChange={updateControl}
+          paletteColors={paletteColors}
+          onAddColor={handleAddColor}
+          onClearPalette={handleClearPalette}
+          onUpdateColor={handleUpdateColor}
+          onRemoveColor={handleRemoveColor}
+          onRandomize={handleRandomize}
+          onReset={handleReset}
+          onCopyPalette={handleCopyPalette}
+          favorites={favorites}
+          currentPreset={currentPreset}
+          onLoadPreset={handleLoadPreset}
+          favoriteName={favoriteName}
+          setFavoriteName={setFavoriteName}
+          onSaveFavorite={handleSaveFavorite}
+          onDeleteFavorite={handleDeleteFavorite}
+          onExportFavorites={handleExportFavorites}
+          favoritesImport={favoritesImport}
+          setFavoritesImport={setFavoritesImport}
+          onImportFavorites={handleImportFavorites}
+          onAddDotsForFaction={(index, count) =>
+            simRef.current?.addDotsForFaction(index, count)
+          }
+          onRemoveFactionDots={(faction, count) =>
+            simRef.current?.removeFactionDots(faction, count)
+          }
+          onSetAllToFaction={(faction) =>
+            simRef.current?.setAllToFaction(faction)
+          }
+        />
+      </aside>
+
+      <main className="main" ref={mainRef}>
+        <StatsPanel
+          mode={controls.mode}
+          stats={
+            controls.mode === "simulation"
+              ? {
+                  totalDots: statsTotal,
+                  fps: statsFps,
+                  avgVelocity: 0,
+                }
+              : {
+                  factions: statsFactions.map((count, index) => ({
+                    count,
+                    color: palette[index] || "#111827",
+                    percentage: statsTotal > 0 ? (count / statsTotal) * 100 : 0,
+                  })),
+                  totalDots: statsTotal,
+                  fps: statsFps,
+                }
+          }
+        />
+        <ContextMenu.Root
+          onOpenChange={(open) => {
+            if (!open) {
+              setMenuDotActive(false);
+              simRef.current?.clearMenuDot();
+            }
+          }}
+        >
+          <ContextMenu.Trigger asChild>
+            <canvas
+              ref={canvasRef}
+              className="canvas"
+              onMouseMove={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                simRef.current?.handleMouseMove(
+                  event.clientX - rect.left,
+                  event.clientY - rect.top,
+                );
+              }}
+              onMouseLeave={() => simRef.current?.handleMouseLeave()}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                simRef.current?.handleCanvasClick(
+                  event.clientX - rect.left,
+                  event.clientY - rect.top,
+                  event.shiftKey,
+                );
+              }}
+              onContextMenu={(event) => {
+                if (!paused) {
+                  event.preventDefault();
+                  setMenuDotActive(false);
+                  simRef.current?.clearMenuDot();
+                  return;
+                }
+                const rect = event.currentTarget.getBoundingClientRect();
+                const dot = simRef.current?.setMenuDotAt(
+                  event.clientX - rect.left,
+                  event.clientY - rect.top,
+                );
+                if (dot) {
+                  setMenuSize(Math.round(dot.size));
+                  setMenuDotActive(true);
+                } else {
+                  event.preventDefault();
+                  setMenuDotActive(false);
+                  simRef.current?.clearMenuDot();
+                }
+              }}
+            />
+          </ContextMenu.Trigger>
+          <ContextMenu.Portal container={portalContainerRef.current}>
+            <ContextMenu.Content className="context-menu-content">
+              <div className="context-menu-section">
+                <div className="context-menu-label">Size</div>
+                <div className="context-menu-row">
+                  <ContextMenuSizeSlider
+                    value={menuSize}
+                    onChange={(value) => {
+                      setMenuSize(value);
+                      simRef.current?.updateMenuDotSize(value);
+                    }}
+                  />
+                  <span className="context-menu-value">{menuSize}</span>
+                </div>
+              </div>
+              <div className="context-menu-section">
+                <div className="context-menu-label">Color</div>
+                <div className="context-menu-swatch-grid">
+                  {palette.map((color, index) => (
+                    // edge-tools-disable-next-line no-inline-styles -- Dynamic runtime color from user palette, no alternative
+                    <ContextMenu.Item
+                      key={`${color}-${index}`}
+                      className="context-menu-swatch"
+                      style={{ "--swatch-color": color } as React.CSSProperties}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        simRef.current?.updateMenuDotFaction(index);
                       }}
                     />
-                    <span className="context-menu-value">{menuSize}</span>
-                  </div>
+                  ))}
                 </div>
-                <div className="context-menu-section">
-                  <div className="context-menu-label">Color</div>
-                  <div className="context-menu-swatch-grid">
-                    {palette.map((color, index) => (
-                      // edge-tools-disable-next-line no-inline-styles -- Dynamic runtime color from user palette, no alternative
-                      <ContextMenu.Item
-                        key={`${color}-${index}`}
-                        className="context-menu-swatch"
-                        style={
-                          { "--swatch-color": color } as React.CSSProperties
-                        }
-                        onSelect={(event) => {
-                          event.preventDefault();
-                          simRef.current?.updateMenuDotFaction(index);
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </ContextMenu.Content>
-            </ContextMenu.Portal>
-          </ContextMenu.Root>
-        </main>
-      </div>
-    </Theme>
+              </div>
+            </ContextMenu.Content>
+          </ContextMenu.Portal>
+        </ContextMenu.Root>
+      </main>
+    </div>
   );
 }
 
